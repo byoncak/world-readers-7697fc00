@@ -1,0 +1,1 @@
+ALTER TABLE public.book_votes ADD COLUMN book_id uuid REFERENCES public.books(id) ON DELETE SET NULL;

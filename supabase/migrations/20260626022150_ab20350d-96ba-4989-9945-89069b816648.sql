@@ -1,0 +1,1 @@
+INSERT INTO public.shop_items (name, description, category, price, asset_data) VALUES ('Player One 🎮', 'Ready Player One', 'badge', 250, '{"emoji":"🎮","label":"Player One","bg_class":"bg-indigo-100"}'::jsonb);

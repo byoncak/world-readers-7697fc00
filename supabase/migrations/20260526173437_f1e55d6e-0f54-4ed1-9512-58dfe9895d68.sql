@@ -1,0 +1,1 @@
+INSERT INTO public.shop_items (name, description, category, price, asset_data) VALUES ('Adrian Bar', 'A gas-shrouded alien planet, swirling with astrophage glow. Inspired by Project Hail Mary.', 'progress_bar', 350, '{"bar_class": "progress-adrian"}'::jsonb);

@@ -1,0 +1,1 @@
+UPDATE shop_items SET price = 350 WHERE id = '07196ba2-2585-4481-add7-f0fcb3019eaf';

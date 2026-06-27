@@ -1,0 +1,1 @@
+ALTER TABLE public.books ADD COLUMN spine_art_url text;

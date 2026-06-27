@@ -1,0 +1,1 @@
+ALTER TABLE public.personal_books ADD COLUMN finished_at timestamptz;

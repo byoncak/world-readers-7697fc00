@@ -1,0 +1,1 @@
+ALTER TABLE public.books ADD COLUMN meeting_rsvp_active boolean NOT NULL DEFAULT false;

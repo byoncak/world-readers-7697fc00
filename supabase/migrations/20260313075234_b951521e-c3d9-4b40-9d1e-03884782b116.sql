@@ -1,0 +1,1 @@
+UPDATE shop_items SET asset_data = jsonb_set(asset_data, '{animation_class}', '"animate-chrome-ring"') WHERE id = 'c3135eb5-b90d-4a35-8ede-86eaec7b694b';

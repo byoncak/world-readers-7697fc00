@@ -1,0 +1,1 @@
+ALTER TABLE public.book_quotes ADD COLUMN is_spoiler boolean NOT NULL DEFAULT false;
