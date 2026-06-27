@@ -234,7 +234,11 @@ const CreateClubDialog = ({ onCreated }: { onCreated: (id: string) => void }) =>
     }
     setSubmitting(true);
     const { data: club, error } = await supabase.from('clubs').insert({
-      ...parsed.data,
+      name: parsed.data.name,
+      description: parsed.data.description ?? null,
+      visibility: parsed.data.visibility,
+      join_policy: parsed.data.join_policy,
+      member_cap: parsed.data.member_cap,
       owner_id: user.id,
     }).select().single();
     if (error || !club) {
