@@ -59,11 +59,6 @@ INSERT INTO public.clubs(id, name, owner_id) VALUES
   ('${CLUB_A}', 'Club A', '${USER_A}'),
   ('${CLUB_B}', 'Club B', '${USER_B}');
 
-INSERT INTO public.profiles(user_id, display_name) VALUES
-  ('${USER_A}', 'User A'),
-  ('${USER_B}', 'User B'),
-  ('${USER_C}', 'User C');
-
 INSERT INTO public.club_members(club_id, user_id, role) VALUES
   ('${CLUB_A}', '${USER_A}', 'owner'),
   ('${CLUB_B}', '${USER_B}', 'owner'),
