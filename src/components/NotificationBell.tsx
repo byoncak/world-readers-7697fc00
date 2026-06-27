@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useDailyLoginReward } from '@/hooks/useDailyLoginReward';
 import { useNavigate } from 'react-router-dom';
+import { useClub } from '@/contexts/ClubContext';
 import NotificationItem from './NotificationItem';
 import DailyRewardClaim from './DailyRewardClaim';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -18,6 +19,7 @@ interface FeedItem {
   created_at: string;
   read: boolean;
   link?: string | null;
+  club_id?: string | null;
 }
 
 const DISMISSED_STORAGE_PREFIX = 'dismissed-notification-keys';
@@ -27,6 +29,7 @@ const getDismissedStorageKey = (userId: string) => `${DISMISSED_STORAGE_PREFIX}:
 const NotificationBell = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { clubId: activeClubId, clubPath } = useClub();
   const { supported, permission, subscribe } = usePushNotifications();
   const { claimable, claiming, claim } = useDailyLoginReward();
   const [items, setItems] = useState<FeedItem[]>([]);
@@ -63,7 +66,7 @@ const NotificationBell = () => {
         .eq('user_id', user.id),
       supabase
         .from('notifications')
-        .select('id, type, title, message, created_at, read, link')
+        .select('id, type, title, message, created_at, read, link, club_id')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(20),
@@ -88,6 +91,7 @@ const NotificationBell = () => {
       created_at: n.created_at,
       read: n.read,
       link: n.link,
+      club_id: n.club_id,
     }));
 
     const merged = [...annItems, ...notifItems]
@@ -208,15 +212,19 @@ const NotificationBell = () => {
       return;
     }
     setOpen(false);
+    const targetClubId = item.club_id ?? activeClubId;
+    const prefix = targetClubId ? `/c/${targetClubId}` : '';
     if (item.link) {
       const resolvedLink = item.link
         .replace(/^\/profile\//, '/member/')
         .replace(/^\/community(\/|$|\?)/, '/lounge$1');
-      navigate(resolvedLink);
+      // notification.link is club-relative ("/inbox", "/lounge", etc.)
+      navigate(`${prefix}${resolvedLink.startsWith('/') ? resolvedLink : `/${resolvedLink}`}`);
     } else {
-      navigate('/lounge');
+      navigate(`${prefix}/lounge`);
     }
   };
+
 
   const handleDismiss = useCallback(async (item: FeedItem) => {
     const key = `${item.type}-${item.id}`;
