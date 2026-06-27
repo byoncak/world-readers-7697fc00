@@ -1,18 +1,20 @@
 import { Link } from 'react-router-dom';
 import { usePoints } from '@/hooks/usePoints';
 import { usePendingSpend } from '@/contexts/PendingSpendContext';
+import { useClub } from '@/contexts/ClubContext';
 
 const PointsDisplay = () => {
   const { points, loading } = usePoints();
   const { pendingSpend } = usePendingSpend();
+  const { clubPath, clubId } = useClub();
 
-  if (loading) return null;
+  if (loading || !clubId) return null;
 
   const displayed = Math.max(0, points - pendingSpend);
 
   return (
     <Link
-      to="/shop"
+      to={clubPath('/shop')}
       className="ml-auto hover:scale-105 transition-transform"
       title="Go to shop"
     >
