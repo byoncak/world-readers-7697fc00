@@ -12,6 +12,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import AchievementsPanel from '@/components/AchievementsPanel';
 import { searchGoogleBooks, type BookSearchResult } from '@/lib/googleBooks';
 import ReadingTimelineShare from '@/components/ReadingTimelineShare';
+import { useClub } from '@/contexts/ClubContext';
 
 import StyledName from '@/components/StyledName';
 import Sparkles from '@/components/Sparkles';
@@ -69,6 +70,7 @@ const MemberProfile = () => {
   const { userId } = useParams<{ userId: string }>();
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const { clubPath } = useClub();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [progress, setProgress] = useState<ReadingProgressItem[]>([]);
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
@@ -373,7 +375,7 @@ const MemberProfile = () => {
             <div className="cozy-card relative flex flex-col items-center gap-4 sm:flex-row sm:items-start">
               {/* DM shortcut for own profile only — top-right of card */}
               {isOwnProfile && (
-                <Link to="/inbox" title="My Messages" className="absolute top-4 right-4 inline-flex items-center justify-center h-9 w-9 rounded-full bg-primary/10 text-primary hover:bg-primary/20 hover:scale-105 transition-all duration-200 shadow-sm">
+                <Link to={clubPath('/inbox')} title="My Messages" className="absolute top-4 right-4 inline-flex items-center justify-center h-9 w-9 rounded-full bg-primary/10 text-primary hover:bg-primary/20 hover:scale-105 transition-all duration-200 shadow-sm">
                   <SendHorizonal className="h-4 w-4" />
                 </Link>
               )}

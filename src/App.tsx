@@ -34,6 +34,10 @@ const Shop = lazy(() => import("./pages/Shop"));
 const Journal = lazy(() => import("./pages/Journal"));
 const Activity = lazy(() => import("./pages/Activity"));
 const Construction = lazy(() => import("./pages/Construction"));
+const Clubs = lazy(() => import("./pages/Clubs"));
+const ClubManage = lazy(() => import("./pages/ClubManage"));
+import HomeRedirect from "@/components/HomeRedirect";
+import ClubGate from "@/components/ClubGate";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,14 +70,19 @@ const App = () => (
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/construction" element={<Construction />} />
                 <Route element={<AuthLayout />}>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/lounge" element={<Community />} />
-                  <Route path="/inbox" element={<Inbox />} />
-                  <Route path="/shop" element={<Shop />} />
-                  <Route path="/journal" element={<Journal />} />
-                  <Route path="/activity" element={<Activity />} />
-                  <Route path="/member/:userId" element={<MemberProfile />} />
-                  <Route path="/admin" element={<Admin />} />
+                  <Route path="/" element={<HomeRedirect />} />
+                  <Route path="/clubs" element={<Clubs />} />
+                  <Route path="/c/:clubId" element={<ClubGate />}>
+                    <Route index element={<Index />} />
+                    <Route path="lounge" element={<Community />} />
+                    <Route path="inbox" element={<Inbox />} />
+                    <Route path="shop" element={<Shop />} />
+                    <Route path="journal" element={<Journal />} />
+                    <Route path="activity" element={<Activity />} />
+                    <Route path="member/:userId" element={<MemberProfile />} />
+                    <Route path="admin" element={<Admin />} />
+                    <Route path="manage" element={<ClubManage />} />
+                  </Route>
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Route>
