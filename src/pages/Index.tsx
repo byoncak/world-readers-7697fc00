@@ -5,6 +5,7 @@ import CurrentBookWidget from '@/components/CurrentBookWidget';
 import NextMeetupWidget from '@/components/NextMeetupWidget';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useClub } from '@/contexts/ClubContext';
 
 // Lazy-load below-the-fold widgets so the initial Home bundle is smaller.
 const BookWishlistWidget = lazy(() => import('@/components/BookWishlistWidget'));
@@ -16,23 +17,23 @@ const WidgetFallback = () => (
   </div>
 );
 
-const shortcutItems = [
+const buildShortcuts = (clubPath: (p?: string) => string) => [
   {
-    to: '/shop',
+    to: clubPath('/shop'),
     icon: Apple,
     label: 'Shop',
     colorClass: 'bg-[hsl(var(--sage))] text-[hsl(var(--secondary-foreground))] hover:shadow-[0_8px_24px_-4px_hsl(var(--sage)/0.5)]',
     borderClass: 'border-[hsl(var(--sage)/0.5)]',
   },
   {
-    to: '/journal?tab=notes',
+    to: clubPath('/journal?tab=notes'),
     icon: StickyNote,
     label: 'Notes',
     colorClass: 'bg-[hsl(var(--peach))] text-[hsl(var(--terracotta))] hover:shadow-[0_8px_24px_-4px_hsl(var(--peach)/0.5)]',
     borderClass: 'border-[hsl(var(--peach)/0.5)]',
   },
   {
-    to: '/lounge?tab=messages',
+    to: clubPath('/lounge?tab=messages'),
     icon: Send,
     label: 'Messages',
     colorClass: 'bg-[hsl(var(--cream))] text-[hsl(var(--warm-brown))] hover:shadow-[0_8px_24px_-4px_hsl(var(--soft-gold)/0.4)]',
@@ -42,6 +43,8 @@ const shortcutItems = [
 
 const Index = () => {
   const { user } = useAuth();
+  const { clubPath } = useClub();
+  const shortcutItems = buildShortcuts(clubPath);
   const [showLivePoll, setShowLivePoll] = useState(false);
 
   useEffect(() => {
@@ -86,7 +89,7 @@ const Index = () => {
         ))}
         {showLivePoll && (
           <Link
-            to="/activity?poll=open"
+            to={clubPath('/activity?poll=open')}
             aria-label="Live poll"
             title="Live poll"
             className="group flex h-14 w-14 flex-col items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/10 text-red-600 shadow-[0_4px_16px_-4px_hsl(var(--warm-brown)/0.12)] transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:bg-red-500/20"
