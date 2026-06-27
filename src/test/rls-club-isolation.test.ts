@@ -26,14 +26,18 @@ const hasPsql = (() => {
 const d = hasPsql ? describe : describe.skip;
 
 function psql(sql: string) {
-  const r = spawnSync("psql", ["-X", "-v", "ON_ERROR_STOP=1", "-At", "-c", sql], {
+  const r = spawnSync("psql", ["-X", "-q", "-v", "ON_ERROR_STOP=1", "-At", "-c", sql], {
     encoding: "utf8",
   });
-  return {
-    stdout: (r.stdout || "").trim(),
-    stderr: (r.stderr || "").trim(),
-    status: r.status ?? -1,
-  };
+  // Multi-statement scripts emit command tags (BEGIN/INSERT/ROLLBACK) alongside data.
+  // Keep only lines that look like data (contain '|' or no whitespace, no command tag).
+  const tagRe = /^(BEGIN|COMMIT|ROLLBACK|INSERT|UPDATE|DELETE|SET|DO|SELECT \d)/;
+  const stdout = (r.stdout || "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l && !tagRe.test(l))
+    .join("\n");
+  return { stdout, stderr: (r.stderr || "").trim(), status: r.status ?? -1 };
 }
 
 const CLUB_A = "00000000-0000-0000-0000-00000000aaaa";
