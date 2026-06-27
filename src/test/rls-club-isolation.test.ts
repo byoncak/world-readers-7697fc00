@@ -54,7 +54,6 @@ function runSql(sql: string): { stdout: string; status: number; stderr: string }
 
 const setup = `
 BEGIN;
-SET LOCAL session_replication_role = replica; -- disable triggers (notifications, points) on seed inserts
 
 INSERT INTO public.clubs(id, name, owner_id) VALUES
   ('${CLUB_A}', 'Club A', '${USER_A}'),
