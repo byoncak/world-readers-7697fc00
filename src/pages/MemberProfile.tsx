@@ -70,6 +70,7 @@ const MemberProfile = () => {
   const { userId } = useParams<{ userId: string }>();
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const { clubPath } = useClub();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [progress, setProgress] = useState<ReadingProgressItem[]>([]);
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
