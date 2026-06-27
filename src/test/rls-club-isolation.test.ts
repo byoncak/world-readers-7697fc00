@@ -41,7 +41,7 @@ const CLUB_B = "00000000-0000-0000-0000-00000000bbbb";
 const USER_A = "00000000-0000-0000-0000-0000000000a1"; // member of A only
 const USER_B = "00000000-0000-0000-0000-0000000000b1"; // admin of B only
 const USER_C = "00000000-0000-0000-0000-0000000000c1"; // member of both
-const USER_X = "00000000-0000-0000-0000-0000000000x1"; // member of neither
+const USER_X = "00000000-0000-0000-0000-0000000000d1"; // member of neither
 
 const seed = `
 BEGIN;
