@@ -74,7 +74,7 @@ INSERT INTO public.books(id, club_id, title, author, status) VALUES
   ('${BOOK_A}', '${CLUB_A}', 'A Book', 'x', 'current'),
   ('${BOOK_B}', '${CLUB_B}', 'B Book', 'x', 'current');
 
-SET LOCAL session_replication_role = origin;
+
 `;
 
 const teardown = `\nROLLBACK;`;
