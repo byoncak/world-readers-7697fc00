@@ -12,6 +12,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import AchievementsPanel from '@/components/AchievementsPanel';
 import { searchGoogleBooks, type BookSearchResult } from '@/lib/googleBooks';
 import ReadingTimelineShare from '@/components/ReadingTimelineShare';
+import { useClub } from '@/contexts/ClubContext';
 
 import StyledName from '@/components/StyledName';
 import Sparkles from '@/components/Sparkles';
