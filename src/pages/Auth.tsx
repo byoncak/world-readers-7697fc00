@@ -75,7 +75,7 @@ const Auth = () => {
       <div className="cozy-card w-full max-w-md">
         <div className="mb-6 flex flex-col items-center">
           <img src={bookwormImg} alt="Detritivores bookworm mascot" className="h-28 w-28 mb-2" />
-          <h1 className="cozy-title text-4xl">Detritivores</h1>
+          <h1 className="cozy-title text-4xl">Welcome to all World Readers!</h1>
           <p className="cozy-subtitle mt-1 flex items-center gap-2">
             <BookOpen className="h-4 w-4" />
             Book Club
