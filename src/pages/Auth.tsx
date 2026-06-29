@@ -4,8 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
 import { BookOpen, Coffee } from 'lucide-react';
-import bookwormImg from '@/assets/bookworm.png';
-import wormIcon from '@/assets/worm-icon.png';
+import worldReadersLogo from '@/assets/world-readers-logo.png.asset.json';
 
 const Auth = () => {
   const { user, loading, signIn, signUp } = useAuth();
