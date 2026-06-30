@@ -118,8 +118,8 @@ const Auth = () => {
     <div className="flex min-h-screen items-center justify-center bg-background cozy-bg-pattern p-4">
       <div className="cozy-card w-full max-w-md">
         <div className="mb-6 flex flex-col items-center">
-          <h1 className="cozy-title text-4xl text-center mb-2">Welcome</h1>
           <CurvedLogo />
+          <h1 className="cozy-title text-xl text-center mt-2">Welcome</h1>
         </div>
 
 
