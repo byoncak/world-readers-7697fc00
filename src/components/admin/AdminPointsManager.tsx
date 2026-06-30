@@ -24,6 +24,7 @@ interface SpamAlert {
 
 const AdminPointsManager = () => {
   const { toast } = useToast();
+  const { clubId, club } = useClub();
   const [members, setMembers] = useState<MemberPoints[]>([]);
   const [spamAlerts, setSpamAlerts] = useState<SpamAlert[]>([]);
   const [open, setOpen] = useState(false);
@@ -36,29 +37,31 @@ const AdminPointsManager = () => {
   }, []);
 
   const fetchMembers = useCallback(async () => {
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('user_id, display_name')
-      .order('display_name');
+    if (!clubId) return;
+    const { data: clubMembers } = await supabase
+      .from('club_members')
+      .select('user_id, profile:profiles(display_name)')
+      .eq('club_id', clubId);
 
     const { data: points } = await supabase
       .from('user_points')
-      .select('user_id, total_points, lifetime_points');
+      .select('user_id, total_points, lifetime_points')
+      .eq('club_id', clubId);
 
-    if (!profiles) return;
+    if (!clubMembers) return;
 
     const pointsMap = new Map((points || []).map(p => [p.user_id, p]));
 
-    const merged: MemberPoints[] = profiles.map(p => ({
-      user_id: p.user_id,
-      display_name: p.display_name,
-      total_points: pointsMap.get(p.user_id)?.total_points ?? 0,
-      lifetime_points: pointsMap.get(p.user_id)?.lifetime_points ?? 0,
+    const merged: MemberPoints[] = clubMembers.map((m: any) => ({
+      user_id: m.user_id,
+      display_name: m.profile?.display_name ?? null,
+      total_points: pointsMap.get(m.user_id)?.total_points ?? 0,
+      lifetime_points: pointsMap.get(m.user_id)?.lifetime_points ?? 0,
     }));
 
     merged.sort((a, b) => b.total_points - a.total_points);
     setMembers(merged);
-  }, []);
+  }, [clubId]);
 
   useEffect(() => {
     if (open) {
@@ -68,7 +71,7 @@ const AdminPointsManager = () => {
   }, [open, fetchMembers, fetchSpamAlerts]);
 
   const adjustPoints = async (userId: string, amount: number) => {
-    if (amount === 0) return;
+    if (amount === 0 || !clubId) return;
     setLoading(userId);
 
     const { error } = await supabase.rpc('award_points', {
@@ -76,6 +79,7 @@ const AdminPointsManager = () => {
       _amount: amount,
       _action_type: 'admin_adjustment',
       _description: amount > 0 ? 'Admin gifted apples' : 'Admin deducted apples',
+      _club_id: clubId,
     });
 
     if (error) {
