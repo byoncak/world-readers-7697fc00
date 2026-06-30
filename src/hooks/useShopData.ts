@@ -34,7 +34,7 @@ export const useShopData = (userId: string | undefined) => {
     setPurchasing(true);
 
     if (testMode) {
-      const { error } = await supabase.from('user_inventory').insert({ user_id: userId, item_id: item.id });
+      const { error } = await supabase.from('user_inventory').insert({ user_id: userId, item_id: item.id, club_id: clubId });
       setPurchasing(false);
       if (error) {
         toast({ title: 'Claim failed', description: error.message, variant: 'destructive' });
@@ -45,9 +45,16 @@ export const useShopData = (userId: string | undefined) => {
       return;
     }
 
+    if (!clubId) {
+      setPurchasing(false);
+      toast({ title: 'Pick a club first', variant: 'destructive' });
+      return;
+    }
+
     const { data, error } = await supabase.rpc('purchase_shop_item', {
       _user_id: userId,
       _item_id: item.id,
+      _club_id: clubId,
     });
     setPurchasing(false);
 
