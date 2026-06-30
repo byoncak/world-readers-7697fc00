@@ -1405,21 +1405,21 @@ export type Database = {
       }
       user_points: {
         Row: {
-          club_id: string | null
+          club_id: string
           lifetime_points: number
           total_points: number
           updated_at: string
           user_id: string
         }
         Insert: {
-          club_id?: string | null
+          club_id: string
           lifetime_points?: number
           total_points?: number
           updated_at?: string
           user_id: string
         }
         Update: {
-          club_id?: string | null
+          club_id?: string
           lifetime_points?: number
           total_points?: number
           updated_at?: string
@@ -1542,6 +1542,7 @@ export type Database = {
         Args: {
           _action_type: string
           _amount: number
+          _club_id?: string
           _description?: string
           _user_id: string
         }
@@ -1605,7 +1606,7 @@ export type Database = {
       }
       is_privileged: { Args: { _user_id: string }; Returns: boolean }
       purchase_shop_item: {
-        Args: { _item_id: string; _user_id: string }
+        Args: { _club_id: string; _item_id: string; _user_id: string }
         Returns: boolean
       }
     }

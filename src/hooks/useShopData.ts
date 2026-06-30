@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { usePoints } from '@/hooks/usePoints';
+import { useClub } from '@/contexts/ClubContext';
 import type { ShopItem } from '@/components/shop/ShopPreview';
 
 export const useShopData = (userId: string | undefined) => {
   const { points, refetch: refetchPoints } = usePoints();
+  const { clubId } = useClub();
   const { toast } = useToast();
   const [items, setItems] = useState<ShopItem[]>([]);
   const [owned, setOwned] = useState<Set<string>>(new Set());
@@ -32,7 +34,7 @@ export const useShopData = (userId: string | undefined) => {
     setPurchasing(true);
 
     if (testMode) {
-      const { error } = await supabase.from('user_inventory').insert({ user_id: userId, item_id: item.id });
+      const { error } = await supabase.from('user_inventory').insert({ user_id: userId, item_id: item.id, club_id: clubId });
       setPurchasing(false);
       if (error) {
         toast({ title: 'Claim failed', description: error.message, variant: 'destructive' });
@@ -43,9 +45,16 @@ export const useShopData = (userId: string | undefined) => {
       return;
     }
 
+    if (!clubId) {
+      setPurchasing(false);
+      toast({ title: 'Pick a club first', variant: 'destructive' });
+      return;
+    }
+
     const { data, error } = await supabase.rpc('purchase_shop_item', {
       _user_id: userId,
       _item_id: item.id,
+      _club_id: clubId,
     });
     setPurchasing(false);
 
@@ -57,7 +66,7 @@ export const useShopData = (userId: string | undefined) => {
     setOwned(prev => new Set([...prev, item.id]));
     setLastUnlocked(item);
     refetchPoints();
-  }, [userId, testMode, toast, refetchPoints]);
+  }, [userId, testMode, toast, refetchPoints, clubId]);
 
   const handlePurchase = useCallback(async () => {
     if (!buying) return;
