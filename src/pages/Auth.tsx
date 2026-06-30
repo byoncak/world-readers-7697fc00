@@ -6,16 +6,16 @@ import { supabase } from '@/integrations/supabase/client';
 import worldReadersLogo from '@/assets/world-readers-logo.png.asset.json';
 
 const CurvedLogo = () => (
-  <div className="relative mb-6 mt-2 flex h-56 w-72 items-center justify-center">
+  <div className="relative mb-4 mt-2 flex h-72 w-80 items-center justify-center">
     <svg
       className="absolute inset-0 h-full w-full drop-shadow-md text-foreground"
-      viewBox="0 0 240 180"
+      viewBox="0 0 320 230"
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
         <path
           id="worldReadersArc"
-          d="M 20,135 A 100,100 0 0,1 220,135"
+          d="M 30,170 A 130,130 0 0,1 290,170"
           fill="transparent"
         />
       </defs>
@@ -23,9 +23,9 @@ const CurvedLogo = () => (
         fill="currentColor"
         style={{
           fontFamily: 'var(--font-display)',
-          fontSize: '22px',
+          fontSize: '26px',
           fontWeight: 700,
-          letterSpacing: '0.14em',
+          letterSpacing: '0.05em',
           textTransform: 'uppercase',
         }}
       >
@@ -39,8 +39,8 @@ const CurvedLogo = () => (
       </text>
     </svg>
 
-    <div className="absolute bottom-0 flex flex-col items-center">
-      <div className="h-28 w-28 overflow-hidden rounded-full">
+    <div className="absolute bottom-2 flex flex-col items-center">
+      <div className="h-40 w-40 overflow-hidden rounded-full">
         <img
           src={worldReadersLogo.url}
           alt="World Readers"
