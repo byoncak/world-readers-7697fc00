@@ -40,7 +40,7 @@ const CurvedLogo = () => (
     </svg>
 
     <div className="absolute bottom-0 flex flex-col items-center">
-      <div className="h-28 w-28 overflow-hidden rounded-full bg-card shadow-xl">
+      <div className="h-28 w-28 overflow-hidden rounded-full">
         <img
           src={worldReadersLogo.url}
           alt="World Readers"
