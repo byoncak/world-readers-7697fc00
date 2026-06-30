@@ -7,9 +7,9 @@ import { BookOpen, Coffee } from 'lucide-react';
 import worldReadersLogo from '@/assets/world-readers-logo.png.asset.json';
 
 const CurvedLogo = () => (
-  <div className="relative w-64 h-44 flex items-center justify-center">
+  <div className="relative mb-6 mt-2 flex h-40 w-64 items-center justify-center">
     <svg
-      className="absolute inset-0 h-full w-full drop-shadow-md"
+      className="absolute inset-0 h-full w-full drop-shadow-md text-foreground"
       viewBox="0 0 240 150"
       xmlns="http://www.w3.org/2000/svg"
     >
@@ -22,7 +22,6 @@ const CurvedLogo = () => (
       </defs>
       <text
         fill="currentColor"
-        className="fill-current"
         style={{
           fontFamily: 'var(--font-display)',
           fontSize: '22px',
@@ -42,7 +41,7 @@ const CurvedLogo = () => (
     </svg>
 
     <div className="absolute bottom-0 flex flex-col items-center">
-      <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-card bg-card shadow-xl">
+      <div className="h-16 w-16 overflow-hidden rounded-full border-4 border-card bg-card shadow-xl">
         <img
           src={worldReadersLogo.url}
           alt="World Readers"
