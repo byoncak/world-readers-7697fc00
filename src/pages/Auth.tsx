@@ -6,6 +6,52 @@ import { supabase } from '@/integrations/supabase/client';
 import { BookOpen, Coffee } from 'lucide-react';
 import worldReadersLogo from '@/assets/world-readers-logo.png.asset.json';
 
+const CurvedLogo = () => (
+  <div className="relative mb-6 mt-2 flex h-40 w-64 items-center justify-center">
+    <svg
+      className="absolute inset-0 h-full w-full drop-shadow-md text-foreground"
+      viewBox="0 0 240 150"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <path
+          id="worldReadersArc"
+          d="M 20,120 A 100,100 0 0,1 220,120"
+          fill="transparent"
+        />
+      </defs>
+      <text
+        fill="currentColor"
+        style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: '22px',
+          fontWeight: 700,
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+        }}
+      >
+        <textPath
+          href="#worldReadersArc"
+          startOffset="50%"
+          textAnchor="middle"
+        >
+          World Readers
+        </textPath>
+      </text>
+    </svg>
+
+    <div className="absolute bottom-0 flex flex-col items-center">
+      <div className="h-16 w-16 overflow-hidden rounded-full border-4 border-card bg-card shadow-xl">
+        <img
+          src={worldReadersLogo.url}
+          alt="World Readers"
+          className="h-full w-full object-cover"
+        />
+      </div>
+    </div>
+  </div>
+);
+
 const Auth = () => {
   const { user, loading, signIn, signUp } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
@@ -74,14 +120,14 @@ const Auth = () => {
       <div className="cozy-card w-full max-w-md">
         <div className="mb-6 flex flex-col items-center">
           <h1 className="cozy-title text-4xl text-center mb-2">Welcome</h1>
-          <img src={worldReadersLogo.url} alt="World Readers logo" className="h-40 w-auto my-4" />
-          <h2 className="cozy-title text-3xl text-center">World Readers</h2>
+          <CurvedLogo />
           <p className="cozy-subtitle mt-1 flex items-center gap-2">
             <BookOpen className="h-4 w-4" />
             Book Club
             <Coffee className="h-4 w-4" />
           </p>
         </div>
+
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
