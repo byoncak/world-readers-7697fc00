@@ -40,7 +40,7 @@ const CurvedLogo = () => (
     </svg>
 
     <div className="absolute bottom-0 flex flex-col items-center">
-      <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-card bg-card shadow-xl">
+      <div className="h-28 w-28 overflow-hidden rounded-full bg-card shadow-xl">
         <img
           src={worldReadersLogo.url}
           alt="World Readers"
@@ -118,8 +118,8 @@ const Auth = () => {
     <div className="flex min-h-screen items-center justify-center bg-background cozy-bg-pattern p-4">
       <div className="cozy-card w-full max-w-md">
         <div className="mb-6 flex flex-col items-center">
-          <h1 className="cozy-title text-4xl text-center mb-2">Welcome</h1>
           <CurvedLogo />
+          <h1 className="cozy-title text-xl text-center mt-2">Welcome</h1>
         </div>
 
 
