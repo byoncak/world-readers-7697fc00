@@ -3,20 +3,19 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
-import { BookOpen, Coffee } from 'lucide-react';
 import worldReadersLogo from '@/assets/world-readers-logo.png.asset.json';
 
 const CurvedLogo = () => (
-  <div className="relative mb-6 mt-2 flex h-40 w-64 items-center justify-center">
+  <div className="relative mb-6 mt-2 flex h-56 w-72 items-center justify-center">
     <svg
       className="absolute inset-0 h-full w-full drop-shadow-md text-foreground"
-      viewBox="0 0 240 150"
+      viewBox="0 0 240 180"
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
         <path
           id="worldReadersArc"
-          d="M 20,120 A 100,100 0 0,1 220,120"
+          d="M 20,135 A 100,100 0 0,1 220,135"
           fill="transparent"
         />
       </defs>
@@ -41,7 +40,7 @@ const CurvedLogo = () => (
     </svg>
 
     <div className="absolute bottom-0 flex flex-col items-center">
-      <div className="h-16 w-16 overflow-hidden rounded-full border-4 border-card bg-card shadow-xl">
+      <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-card bg-card shadow-xl">
         <img
           src={worldReadersLogo.url}
           alt="World Readers"
