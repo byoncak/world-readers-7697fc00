@@ -66,7 +66,7 @@ export const useShopData = (userId: string | undefined) => {
     setOwned(prev => new Set([...prev, item.id]));
     setLastUnlocked(item);
     refetchPoints();
-  }, [userId, testMode, toast, refetchPoints]);
+  }, [userId, testMode, toast, refetchPoints, clubId]);
 
   const handlePurchase = useCallback(async () => {
     if (!buying) return;
