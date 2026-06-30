@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { usePoints } from '@/hooks/usePoints';
+import { useClub } from '@/contexts/ClubContext';
 import type { ShopItem } from '@/components/shop/ShopPreview';
 
 export const useShopData = (userId: string | undefined) => {
   const { points, refetch: refetchPoints } = usePoints();
+  const { clubId } = useClub();
   const { toast } = useToast();
   const [items, setItems] = useState<ShopItem[]>([]);
   const [owned, setOwned] = useState<Set<string>>(new Set());
