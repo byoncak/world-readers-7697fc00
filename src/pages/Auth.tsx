@@ -120,11 +120,6 @@ const Auth = () => {
         <div className="mb-6 flex flex-col items-center">
           <h1 className="cozy-title text-4xl text-center mb-2">Welcome</h1>
           <CurvedLogo />
-          <p className="cozy-subtitle mt-1 flex items-center gap-2">
-            <BookOpen className="h-4 w-4" />
-            Book Club
-            <Coffee className="h-4 w-4" />
-          </p>
         </div>
 
 
