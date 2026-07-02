@@ -73,6 +73,8 @@ const App = () => (
                 <Route path="/construction" element={<Construction />} />
                 <Route element={<AuthLayout />}>
                   <Route path="/" element={<HomeRedirect />} />
+                  <Route path="/index" element={<HomeRedirect />} />
+                  <Route path="/dashboard" element={<HomeRedirect />} />
                   <Route path="/clubs" element={<Clubs />} />
                   <Route path="/c/:clubId" element={<ClubGate />}>
                     <Route index element={<Index />} />
