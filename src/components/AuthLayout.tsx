@@ -19,7 +19,14 @@ const AuthLayout = () => {
     );
   }
 
-  if (!user) return <Navigate to="/auth" replace />;
+  // Auth temporarily disabled — auto-signed in as test user via useAuth. Keep loader if still resolving.
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background cozy-bg-pattern">
+        <div className="book"><div/><div/><div/><div/><div/></div>
+      </div>
+    );
+  }
 
   return (
     <ClubProvider>
