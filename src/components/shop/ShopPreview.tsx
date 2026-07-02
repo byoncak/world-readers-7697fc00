@@ -3,6 +3,7 @@ import ElectricBorder from '@/components/ElectricBorder';
 import ChromeBorder from '@/components/ChromeBorder';
 import DarkMagicBorder from '@/components/DarkMagicBorder';
 import HolographicBorder from '@/components/HolographicBorder';
+import { getThemePreview } from './themePreviews';
 
 interface ShopItem {
   id: string;
@@ -197,20 +198,37 @@ const ShopPreview = ({ item }: { item: ShopItem }) => {
         </div>
       );
     case 'theme': {
-      const colors = item.asset_data.colors as Record<string, string> | undefined;
-      if (!colors) return null;
+      const palette = getThemePreview(
+        item.asset_data.theme_key,
+        item.asset_data.colors as Record<string, string> | undefined
+      );
+      if (!palette) return null;
       return (
-        <div className="flex flex-col items-center gap-2 mb-3 py-2">
-          <div className="flex gap-1.5">
-            {['bg', 'primary', 'accent', 'text'].map(k => (
-              <div
-                key={k}
-                className="h-8 w-8 rounded-full border border-border"
-                style={{ backgroundColor: colors[k] }}
-                title={k}
-              />
-            ))}
+        <div className="flex flex-col items-center gap-1.5 mb-3 py-1">
+          {/* Miniature app "room" rendered in the theme's own palette */}
+          <div
+            className="w-full max-w-[200px] rounded-xl border p-2.5 shadow-inner"
+            style={{ backgroundColor: palette.bg, borderColor: `${palette.primary}33` }}
+            aria-hidden
+          >
+            <div
+              className="rounded-lg p-2"
+              style={{ backgroundColor: palette.card }}
+            >
+              <div className="h-2 w-16 rounded-full mb-1.5" style={{ backgroundColor: palette.text, opacity: 0.9 }} />
+              <div className="h-1.5 w-24 rounded-full mb-2" style={{ backgroundColor: palette.muted, opacity: 0.6 }} />
+              <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: `${palette.muted}44` }}>
+                <div className="h-full w-2/3 rounded-full" style={{ backgroundColor: palette.primary }} />
+              </div>
+              <div className="mt-2 flex items-center gap-1.5">
+                <div className="h-3.5 w-10 rounded-full" style={{ backgroundColor: palette.primary }} />
+                <div className="h-3.5 w-3.5 rounded-full" style={{ backgroundColor: palette.accent }} />
+              </div>
+            </div>
           </div>
+          {palette.mood && (
+            <p className="text-[11px] italic text-muted-foreground font-serif text-center">{palette.mood}</p>
+          )}
         </div>
       );
     }

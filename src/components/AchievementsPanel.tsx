@@ -12,6 +12,7 @@ import DarkMagicBorder from '@/components/DarkMagicBorder';
 import HolographicBorder from '@/components/HolographicBorder';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { toast } from 'sonner';
+import { celebrateFromElement } from '@/lib/celebrate';
 
 // ─── Achievements Data ───
 
@@ -175,6 +176,8 @@ const AchievementsPanel = ({ userId, isOwnProfile }: Props) => {
   const { user } = useAuth();
   const [tab, setTab] = useState<TabKey>('achievements');
   const [unlocked, setUnlocked] = useState<Set<string>>(new Set());
+  // Achievements unlocked since the user's last visit — get the pop + halo treatment
+  const [newlyUnlocked, setNewlyUnlocked] = useState<Set<string>>(new Set());
   // Stacking counts per achievement (e.g. first_finisher → number of books finished first)
   const [stackCounts, setStackCounts] = useState<Record<string, number>>({});
   // Current progress toward locked achievements (own profile only)
@@ -187,6 +190,14 @@ const AchievementsPanel = ({ userId, isOwnProfile }: Props) => {
   // Tab indicator
   const tabsRef = useRef<(HTMLButtonElement | null)[]>([]);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+
+  // One-time confetti per freshly unlocked achievement
+  const celebratedRef = useRef<Set<string>>(new Set());
+  const freshTileRef = (key: string) => (el: HTMLDivElement | null) => {
+    if (!el || celebratedRef.current.has(key)) return;
+    celebratedRef.current.add(key);
+    setTimeout(() => celebrateFromElement(el, { count: 24, power: 130, emojis: ['✨', '🏆', '⭐'] }), 450);
+  };
 
   useEffect(() => {
     const idx = TABS.findIndex(t => t.key === tab);
@@ -209,9 +220,23 @@ const AchievementsPanel = ({ userId, isOwnProfile }: Props) => {
       }
       setUnlocked(set);
       setStackCounts(counts);
+
+      // Celebrate achievements earned since the last visit (own profile only).
+      if (isOwnProfile) {
+        const storageKey = `seenAchievements:${userId}`;
+        const seenRaw = localStorage.getItem(storageKey);
+        if (seenRaw !== null) {
+          try {
+            const seen = new Set<string>(JSON.parse(seenRaw));
+            const fresh = new Set([...set].filter((k) => !seen.has(k)));
+            if (fresh.size > 0) setNewlyUnlocked(fresh);
+          } catch { /* corrupted storage — reseed below */ }
+        }
+        localStorage.setItem(storageKey, JSON.stringify([...set]));
+      }
     };
     load();
-  }, [userId]);
+  }, [userId, isOwnProfile]);
 
   // Fetch progress toward locked achievements (own profile only)
   useEffect(() => {
@@ -364,23 +389,29 @@ const AchievementsPanel = ({ userId, isOwnProfile }: Props) => {
       <CardContent>
         {tab === 'achievements' && (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            {ALL_ACHIEVEMENTS.map(a => {
+            {ALL_ACHIEVEMENTS.map((a, idx) => {
               const isUnlocked = unlocked.has(a.key);
+              const isFresh = newlyUnlocked.has(a.key);
               const stackCount = stackCounts[a.key] ?? 0;
               const Icon = a.icon;
               const target = ACHIEVEMENT_TARGETS[a.key];
               const current = progress[a.key] ?? 0;
               const showProgress = !isUnlocked && isOwnProfile && target !== undefined;
+              const stagger = Math.min(idx, 9) * 40;
               const tile = (
                 <div
-                  className={`relative flex flex-col items-center gap-1.5 py-2 text-center transition-transform ${
+                  ref={isFresh ? freshTileRef(a.key) : undefined}
+                  className={`${isFresh ? 'animate-achievement-pop' : 'animate-tile-in'} relative flex flex-col items-center gap-1.5 py-2 text-center transition-transform ${
                     !isUnlocked ? 'opacity-40 grayscale' : 'cursor-pointer hover:scale-105'
                   }`}
+                  style={{ '--stagger': `${stagger}ms` } as React.CSSProperties}
                 >
                   <div className="relative">
-                    <StarBurst size={56} points={12} color={a.color} muted={!isUnlocked}>
-                      {isUnlocked ? <Icon className="h-5 w-5" style={{ color: a.color }} /> : <Lock className="h-4 w-4 text-muted-foreground" />}
-                    </StarBurst>
+                    <div className={isFresh ? 'animate-achievement-halo' : undefined}>
+                      <StarBurst size={56} points={12} color={a.color} muted={!isUnlocked}>
+                        {isUnlocked ? <Icon className="h-5 w-5" style={{ color: a.color }} /> : <Lock className="h-4 w-4 text-muted-foreground" />}
+                      </StarBurst>
+                    </div>
                     {isUnlocked && stackCount >= 2 && (
                       <span
                         className="absolute -top-1 -right-1 min-w-[20px] h-[20px] px-1 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold font-body shadow-md ring-2 ring-card"
@@ -393,11 +424,39 @@ const AchievementsPanel = ({ userId, isOwnProfile }: Props) => {
                   <span className="text-[11px] font-semibold text-foreground leading-tight">
                     {isUnlocked ? a.name : '???'}
                   </span>
+                  {isFresh && (
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-soft-gold font-body">
+                      New!
+                    </span>
+                  )}
+                  {showProgress && (
+                    <div className="w-full px-2">
+                      <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary/60 transition-all duration-700"
+                          style={{ width: `${Math.min(100, (current / target) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="mt-0.5 block text-[9px] tabular-nums text-muted-foreground font-body">
+                        {Math.min(current, target)}/{target}
+                      </span>
+                    </div>
+                  )}
                 </div>
               );
 
               if (!isUnlocked) {
-                return <div key={a.key}>{tile}</div>;
+                return (
+                  <Popover key={a.key}>
+                    <PopoverTrigger asChild>
+                      <div className="cursor-help">{tile}</div>
+                    </PopoverTrigger>
+                    <PopoverContent side="top" sideOffset={8} className="w-52 p-3 text-center">
+                      <p className="font-display font-bold text-sm mb-1 text-muted-foreground">Locked 🔒</p>
+                      <p className="text-xs text-muted-foreground font-body leading-snug">{a.description}</p>
+                    </PopoverContent>
+                  </Popover>
+                );
               }
 
               return (

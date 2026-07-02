@@ -10,6 +10,7 @@ export const useShopData = (userId: string | undefined) => {
   const { clubId } = useClub();
   const { toast } = useToast();
   const [items, setItems] = useState<ShopItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [owned, setOwned] = useState<Set<string>>(new Set());
   const [buying, setBuying] = useState<ShopItem | null>(null);
   const [purchasing, setPurchasing] = useState(false);
@@ -19,12 +20,14 @@ export const useShopData = (userId: string | undefined) => {
   useEffect(() => {
     if (!userId) return;
     const load = async () => {
+      setLoading(true);
       const [{ data: shopData }, { data: invData }] = await Promise.all([
         supabase.from('shop_items').select('*').eq('active', true).order('price'),
         supabase.from('user_inventory').select('item_id').eq('user_id', userId),
       ]);
       setItems((shopData as ShopItem[]) ?? []);
       setOwned(new Set((invData ?? []).map((i: any) => i.item_id)));
+      setLoading(false);
     };
     load();
   }, [userId]);
@@ -88,5 +91,5 @@ export const useShopData = (userId: string | undefined) => {
 
   const clearLastUnlocked = useCallback(() => setLastUnlocked(null), []);
 
-  return { items, owned, buying, setBuying, purchasing, points, testMode, handlePurchase, handleRelock, purchaseItem, lastUnlocked, clearLastUnlocked };
+  return { items, loading, owned, buying, setBuying, purchasing, points, testMode, handlePurchase, handleRelock, purchaseItem, lastUnlocked, clearLastUnlocked };
 };

@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import AppHeader from '@/components/AppHeader';
 import MobileBottomNav from '@/components/MobileBottomNav';
@@ -8,6 +8,7 @@ import { ClubProvider } from '@/contexts/ClubContext';
 
 const AuthLayout = () => {
   const { user, loading } = useAuth();
+  const location = useLocation();
   useKeyboardInset();
 
   if (loading) {
@@ -26,7 +27,10 @@ const AuthLayout = () => {
         <MeetingRsvpHud />
         <AppHeader />
         <div id="app-scroll-container" className="mobile-nav-offset min-h-0 flex-1 overflow-y-auto overscroll-none">
-          <Outlet />
+          {/* Keyed on pathname so navigating feels like turning a page */}
+          <div key={location.pathname} className="h-full animate-page-in">
+            <Outlet />
+          </div>
         </div>
         <MobileBottomNav />
       </div>

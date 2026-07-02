@@ -1,7 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-const THEME_CLASSES = ['theme-fireside', 'theme-moonlit', 'theme-candlelit'] as const;
+const THEME_CLASSES = [
+  'theme-fireside',
+  'theme-moonlit',
+  'theme-candlelit',
+  'theme-midnight-library',
+  'theme-deep-forest',
+  'theme-velvet-dusk',
+] as const;
 
 export const useEquippedTheme = (userId: string | undefined) => {
   const [themeKey, setThemeKey] = useState<string | null>(null);
