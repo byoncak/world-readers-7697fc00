@@ -66,6 +66,7 @@ const App = () => (
           <CheerCelebration />
           <PointsPopAnimation />
           <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-background cozy-bg-pattern"><div className="book"><div/><div/><div/><div/><div/></div></div>}>
+            <ErrorBoundary>
             <Routes>
               <Route element={<MaintenanceGate />}>
                 <Route path="/auth" element={<Auth />} />
@@ -88,6 +89,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>
+            </ErrorBoundary>
           </Suspense>
         </BrowserRouter>
         </MaintenanceProvider>
