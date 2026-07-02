@@ -19,16 +19,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const TEST_EMAIL = 'testuser@bookclub.local';
+    const TEST_PASSWORD = 'test-user-password-123!';
+    const TEST_DISPLAY_NAME = 'Test User';
+
+    const ensureTestSession = async () => {
+      const { data: signIn, error: signInErr } = await supabase.auth.signInWithPassword({
+        email: TEST_EMAIL,
+        password: TEST_PASSWORD,
+      });
+      if (!signInErr && signIn.session) return;
+      // Create the test user on first run, then it will auto-sign-in via onAuthStateChange.
+      await supabase.auth.signUp({
+        email: TEST_EMAIL,
+        password: TEST_PASSWORD,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: { display_name: TEST_DISPLAY_NAME },
+        },
+      });
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        setSession(session);
+        setUser(session.user);
+        setLoading(false);
+      } else {
+        await ensureTestSession();
+        setLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
