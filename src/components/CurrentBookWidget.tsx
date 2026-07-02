@@ -51,6 +51,7 @@ const CurrentBookWidget = () => {
   const [cheerTarget, setCheerTarget] = useState<{ userId: string; name: string } | null>(null);
 
   useEffect(() => {
+    if (!clubId) return;
     fetchCurrentBook();
 
     // Best-effort local reset for self-cheer testing across page navigation
@@ -62,7 +63,7 @@ const CurrentBookWidget = () => {
         return next;
       });
     }
-  }, []);
+  }, [clubId]);
 
   useEffect(() => () => {
     clearTimeout(savedTimerRef.current);
