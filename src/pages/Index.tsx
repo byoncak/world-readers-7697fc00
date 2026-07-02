@@ -43,7 +43,8 @@ const buildShortcuts = (clubPath: (p?: string) => string) => [
 
 const Index = () => {
   const { user } = useAuth();
-  const { clubPath } = useClub();
+  const { clubPath, clubId } = useClub();
+  console.log('[Index] mount', { clubId, userId: user?.id });
   const shortcutItems = buildShortcuts(clubPath);
   const [showLivePoll, setShowLivePoll] = useState(false);
 
