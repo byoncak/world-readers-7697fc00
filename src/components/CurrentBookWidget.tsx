@@ -30,6 +30,7 @@ interface Progress {
 
 const CurrentBookWidget = () => {
   const { user } = useAuth();
+  const { clubId } = useClub();
   const cosmetics = useEquippedCosmetics(user?.id);
   const equippedBarClass = cosmetics?.progressBarClass || '';
   const [book, setBook] = useState<Book | null>(null);
