@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useClub } from '@/contexts/ClubContext';
 import { useEquippedCosmetics, prefetchEquippedCosmetics } from '@/hooks/useEquippedCosmetics';
 import { BookOpen, Calendar, Sparkles, Trophy, Pencil, FileText } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
