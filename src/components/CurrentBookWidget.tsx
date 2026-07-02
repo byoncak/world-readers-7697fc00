@@ -71,11 +71,14 @@ const CurrentBookWidget = () => {
   }, []);
 
   const fetchCurrentBook = async () => {
+    if (!clubId) return;
     const { data: books } = await supabase
       .from('books')
       .select('*')
       .eq('status', 'current')
+      .eq('club_id', clubId)
       .limit(1);
+
 
     if (books && books.length > 0) {
       setBook(books[0]);
