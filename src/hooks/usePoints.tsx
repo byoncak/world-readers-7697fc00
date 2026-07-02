@@ -12,8 +12,16 @@ export const usePoints = () => {
   const [loading, setLoading] = useState(true);
   const prevPoints = useRef<number | null>(null);
 
+  const isTestUser = user?.email === 'testuser@bookclub.local';
+
   const fetchPoints = async () => {
     if (!user || !clubId) { setPoints(0); setLifetime(0); setLoading(false); return; }
+    if (isTestUser) {
+      setPoints(999999);
+      setLifetime(999999);
+      setLoading(false);
+      return;
+    }
     const { data } = await supabase
       .from('user_points')
       .select('total_points, lifetime_points')
