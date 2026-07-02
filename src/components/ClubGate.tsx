@@ -6,8 +6,6 @@ const ClubGate = () => {
   const { clubId } = useParams<{ clubId: string }>();
   const { memberships, isLoadingMemberships } = useClub();
 
-  console.log('[ClubGate]', { clubId, isLoadingMemberships, count: memberships.length });
-
   if (isLoadingMemberships) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -18,7 +16,6 @@ const ClubGate = () => {
 
   const isMember = memberships.some((m) => m.club_id === clubId);
   if (!isMember) {
-    console.log('[ClubGate] not a member of', clubId, '-> /clubs');
     return <Navigate to="/clubs" replace />;
   }
 
