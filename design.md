@@ -28,7 +28,7 @@ All colors are HSL tokens defined in `src/index.css`. **Never hardcode** — alw
 | `--border` | `30 20% 85%` | Hairline dividers |
 
 ### Themes
-Event-driven (decoupled from OS): `.dark`, `.theme-fireside`, `.theme-moonlit`, `.theme-candlelit`. All themes preserve the same token names — components never need theme-specific code.
+Event-driven (decoupled from OS): `.dark`, `.theme-fireside`, `.theme-moonlit`, `.theme-candlelit`, `.theme-midnight-library` (ink + brass), `.theme-deep-forest` (pine + lantern amber), `.theme-velvet-dusk` (plum + dusty rose). All themes preserve the same token names — components never need theme-specific code. Shop previews come from `src/components/shop/themePreviews.ts` (must stay in sync with `index.css` token blocks and `useEquippedTheme.ts`).
 
 ## 3. Typography
 
@@ -76,9 +76,14 @@ Defined in `@layer components` in `index.css`:
   - `animate-gentle-bounce` — idle empty-state icons.
   - `animate-cheer-pulse` — "Cheer them on!" prompt.
   - `animate-float`, `animate-wiggle` — playful accents.
+  - `animate-fade-in` — tab-content switch. `animate-page-in` — route change (keyed Outlet in `AuthLayout`).
+  - `animate-card-in` / `animate-tile-in` — staggered grid entrances (delay via inline `--stagger`).
+  - `animate-achievement-pop` + `animate-achievement-halo` — freshly unlocked achievements (tracked in `localStorage` `seenAchievements:{userId}`).
+  - `.bar-celebrate` on `.progress-bar-watercolor` — one-shot sheen sweep + gold glow after saving progress.
+  - `celebrate(x, y)` / `celebrateFromElement(el)` from `src/lib/celebrate.ts` — cozy confetti burst (purchases, achievements, finishing a book). Imperative, portal-layer, self-cleaning.
   - `whirl-book` — branded loading state (terracotta pages flipping). Use the `.book` markup, not generic spinners.
   - `gold-glow` — pulsing text-shadow for top-tier name styling.
-- **Reduced motion:** sparkles + dark-magic frame respect `prefers-reduced-motion`.
+- **Reduced motion:** all decorative animation (confetti, staggers, pops, sheens, sparkles, dark-magic frame) respects `prefers-reduced-motion`.
 
 ## 7. Home Page Composition (`src/pages/Index.tsx`)
 

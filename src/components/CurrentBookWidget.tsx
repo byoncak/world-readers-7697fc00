@@ -7,6 +7,7 @@ import { Slider } from '@/components/ui/slider';
 import { format, differenceInCalendarDays, startOfDay } from 'date-fns';
 import CheerDialog from '@/components/CheerDialog';
 import StyledName from '@/components/StyledName';
+import { celebrateFromElement } from '@/lib/celebrate';
 
 interface Book {
   id: string;
@@ -34,9 +35,14 @@ const CurrentBookWidget = () => {
   const [progress, setProgress] = useState<Progress[]>([]);
   const [myPage, setMyPage] = useState(0);
   const [updating, setUpdating] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
+  const [barCelebrating, setBarCelebrating] = useState(false);
   const [editingPage, setEditingPage] = useState(false);
   const [pageInput, setPageInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const myBarRef = useRef<HTMLDivElement>(null);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const celebrateTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Cheer state
   const [cheeredToday, setCheeredToday] = useState<Set<string>>(new Set());
@@ -54,6 +60,11 @@ const CurrentBookWidget = () => {
         return next;
       });
     }
+  }, []);
+
+  useEffect(() => () => {
+    clearTimeout(savedTimerRef.current);
+    clearTimeout(celebrateTimerRef.current);
   }, []);
 
   const fetchCurrentBook = async () => {
@@ -148,6 +159,10 @@ const CurrentBookWidget = () => {
     if (!book || !user) return;
     setUpdating(true);
     const newPage = myPage;
+    const total = book.total_pages || 1;
+    const prevPage = progress.find((p) => p.user_id === user.id)?.current_page ?? 0;
+    const pagesGained = newPage - prevPage;
+    const nowComplete = prevPage < total && newPage >= total;
     await supabase
       .from('reading_progress')
       .upsert({
@@ -179,6 +194,24 @@ const CurrentBookWidget = () => {
       ];
     });
     setUpdating(false);
+
+    // ── Celebrate the update ──
+    setJustSaved(true);
+    clearTimeout(savedTimerRef.current);
+    savedTimerRef.current = setTimeout(() => setJustSaved(false), 1800);
+
+    if (pagesGained > 0 || nowComplete) {
+      setBarCelebrating(true);
+      clearTimeout(celebrateTimerRef.current);
+      celebrateTimerRef.current = setTimeout(() => setBarCelebrating(false), 1300);
+    }
+
+    if (nowComplete) {
+      // Finishing the book deserves a real send-off. 🎉
+      setTimeout(() => {
+        celebrateFromElement(myBarRef.current, { count: 44, power: 190, emojis: ['🎉', '📚', '✨', '🏆'] });
+      }, 350);
+    }
   };
 
   if (!book) {
@@ -313,10 +346,14 @@ const CurrentBookWidget = () => {
               )}
               <button
                 onClick={updateProgress}
-                disabled={updating}
-                className="cozy-btn-primary text-sm"
+                disabled={updating || justSaved}
+                className={`text-sm transition-all duration-300 ${
+                  justSaved
+                    ? 'cozy-btn animate-saved-nudge bg-sage text-secondary-foreground'
+                    : 'cozy-btn-primary'
+                }`}
               >
-                {updating ? '...' : 'Save'}
+                {updating ? '...' : justSaved ? 'Saved ✓' : 'Save'}
               </button>
             </div>
           </div>
@@ -344,7 +381,10 @@ const CurrentBookWidget = () => {
                   <span className="w-24 truncate text-xs font-body text-muted-foreground">
                     <StyledName userId={p.user_id} name={p.display_name || 'Reader'} />
                   </span>
-                  <div className={`progress-bar-watercolor flex-1 ${isComplete ? 'outline outline-2 outline-soft-gold outline-offset-[1px] rounded-full' : ''} ${p.progress_bar_class || (isMe ? equippedBarClass : '')}`}>
+                  <div
+                    ref={isMe ? myBarRef : undefined}
+                    className={`progress-bar-watercolor flex-1 ${isComplete ? 'outline outline-2 outline-soft-gold outline-offset-[1px] rounded-full' : ''} ${p.progress_bar_class || (isMe ? equippedBarClass : '')} ${isMe && barCelebrating ? 'bar-celebrate' : ''}`}
+                  >
                     <div
                       className="fill"
                       style={{ width: `${Math.min((p.current_page / totalPages) * 100, 100)}%` }}

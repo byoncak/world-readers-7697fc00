@@ -35,7 +35,7 @@ type CategoryKey = typeof CATEGORIES[number]['key'];
 
 const Shop = () => {
   const { user } = useAuth();
-  const { items, owned, points, testMode, handleRelock, purchaseItem, lastUnlocked, clearLastUnlocked } = useShopData(user?.id);
+  const { items, loading, owned, points, testMode, handleRelock, purchaseItem, lastUnlocked, clearLastUnlocked } = useShopData(user?.id);
   const [showHelp, setShowHelp] = useState(false);
   const [tab, setTab] = useState<CategoryKey>('avatar_frame');
   const tabsRef = useRef<(HTMLButtonElement | null)[]>([]);
@@ -54,7 +54,10 @@ const Shop = () => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Apple className="h-6 w-6 text-primary" />
-          <h1 className="font-display text-2xl font-bold text-foreground not-italic">Shop</h1>
+          <div>
+            <h1 className="font-display text-2xl font-bold text-foreground not-italic leading-tight">Shop</h1>
+            <p className="font-serif text-xs text-muted-foreground">Spend your apples on something cozy</p>
+          </div>
         </div>
         <button
           onClick={() => setShowHelp(true)}
@@ -94,19 +97,51 @@ const Shop = () => {
       </div>
 
       <div className="animate-fade-in pb-2" key={tab}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {items.filter(i => i.category === tab).map(item => (
-            <ShopItemCard
-              key={item.id}
-              item={item}
-              isOwned={owned.has(item.id)}
-              canAfford={points >= item.price}
-              testMode={testMode}
-              onBuy={purchaseItem}
-              onRelock={handleRelock}
-            />
-          ))}
-        </div>
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-2xl border border-border bg-card p-3 shadow-md">
+                <div className="h-[104px] animate-pulse rounded-xl bg-muted/60" />
+                <div className="p-1 pt-3 space-y-2">
+                  <div className="h-4 w-1/2 animate-pulse rounded-full bg-muted/60" />
+                  <div className="h-3 w-3/4 animate-pulse rounded-full bg-muted/40" />
+                  <div className="flex justify-between pt-2">
+                    <div className="h-6 w-14 animate-pulse rounded-full bg-muted/50" />
+                    <div className="h-6 w-24 animate-pulse rounded-xl bg-muted/50" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (() => {
+          const tabItems = items.filter(i => i.category === tab);
+          if (tabItems.length === 0) {
+            return (
+              <div className="flex flex-col items-center justify-center py-14 text-center">
+                <span className="mb-2 text-3xl animate-gentle-bounce">🪱</span>
+                <h2 className="cozy-title text-xl">Nothing on this shelf yet</h2>
+                <p className="cozy-subtitle mt-1 text-sm">New goodies arrive from time to time — check back soon!</p>
+              </div>
+            );
+          }
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {tabItems.map((item, i) => (
+                <ShopItemCard
+                  key={item.id}
+                  item={item}
+                  isOwned={owned.has(item.id)}
+                  canAfford={points >= item.price}
+                  points={points}
+                  testMode={testMode}
+                  stagger={Math.min(i, 7) * 55}
+                  onBuy={purchaseItem}
+                  onRelock={handleRelock}
+                />
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       <Dialog open={showHelp} onOpenChange={setShowHelp}>

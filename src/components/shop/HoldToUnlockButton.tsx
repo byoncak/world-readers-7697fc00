@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Lock } from 'lucide-react';
 import { usePendingSpend } from '@/contexts/PendingSpendContext';
+import { celebrateFromElement } from '@/lib/celebrate';
 
 const HOLD_DURATION = 1500; // ms
 const FLIGHT_DURATION = 600; // ms per apple
@@ -191,6 +192,7 @@ const HoldToUnlockButton = ({ price, canAfford, testMode, onUnlock, disabled }: 
         completedRef.current = true;
         setFlash(true);
         setTimeout(() => setFlash(false), 500);
+        celebrateFromElement(buttonRef.current, { count: 22, power: 120 });
         // Ensure counter shows exactly `price` spent.
         const missing = price - pendingAppliedRef.current;
         if (missing > 0) {
