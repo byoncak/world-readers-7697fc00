@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useClub } from '@/contexts/ClubContext';
 import { useEquippedCosmetics, prefetchEquippedCosmetics } from '@/hooks/useEquippedCosmetics';
 import { BookOpen, Calendar, Sparkles, Trophy, Pencil, FileText } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
@@ -29,6 +30,7 @@ interface Progress {
 
 const CurrentBookWidget = () => {
   const { user } = useAuth();
+  const { clubId } = useClub();
   const cosmetics = useEquippedCosmetics(user?.id);
   const equippedBarClass = cosmetics?.progressBarClass || '';
   const [book, setBook] = useState<Book | null>(null);
@@ -49,6 +51,9 @@ const CurrentBookWidget = () => {
   const [cheerTarget, setCheerTarget] = useState<{ userId: string; name: string } | null>(null);
 
   useEffect(() => {
+    if (!clubId) return;
+    setBook(null);
+    setProgress([]);
     fetchCurrentBook();
 
     // Best-effort local reset for self-cheer testing across page navigation
@@ -60,7 +65,7 @@ const CurrentBookWidget = () => {
         return next;
       });
     }
-  }, []);
+  }, [clubId]);
 
   useEffect(() => () => {
     clearTimeout(savedTimerRef.current);
@@ -68,11 +73,14 @@ const CurrentBookWidget = () => {
   }, []);
 
   const fetchCurrentBook = async () => {
+    if (!clubId) return;
     const { data: books } = await supabase
       .from('books')
       .select('*')
       .eq('status', 'current')
+      .eq('club_id', clubId)
       .limit(1);
+
 
     if (books && books.length > 0) {
       setBook(books[0]);
