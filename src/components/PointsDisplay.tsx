@@ -10,7 +10,7 @@ const PointsDisplay = () => {
 
   if (loading || !clubId) return null;
 
-  const displayed = Math.max(0, points - pendingSpend);
+  const displayed = points >= 999999 ? '∞' : Math.max(0, points - pendingSpend);
 
   return (
     <Link
