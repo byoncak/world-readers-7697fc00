@@ -52,6 +52,8 @@ const CurrentBookWidget = () => {
 
   useEffect(() => {
     if (!clubId) return;
+    setBook(null);
+    setProgress([]);
     fetchCurrentBook();
 
     // Best-effort local reset for self-cheer testing across page navigation
