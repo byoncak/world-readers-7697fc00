@@ -24,7 +24,7 @@ const AuthLayout = () => {
   return (
     <ClubProvider>
       <div className="flex h-[100dvh] flex-col overflow-hidden bg-background cozy-bg-pattern">
-        <MeetingRsvpHud />
+        <Suspense fallback={null}><MeetingRsvpHud /></Suspense>
         <AppHeader />
         <div id="app-scroll-container" className="mobile-nav-offset min-h-0 flex-1 overflow-y-auto overscroll-none">
           <Outlet />
