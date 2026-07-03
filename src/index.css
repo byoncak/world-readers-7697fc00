@@ -1002,3 +1002,38 @@
     animation: none;
   }
 }
+
+/* ============================================================
+   Avatar frame animations (used by ElectricBorder, ChromeBorder,
+   HolographicBorder). Pure-CSS, GPU-composited rotation.
+   ============================================================ */
+@keyframes avatar-frame-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes avatar-frame-spin-reverse {
+  to { transform: rotate(-360deg); }
+}
+@keyframes avatar-frame-flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+.avatar-frame-ring {
+  animation: avatar-frame-spin var(--frame-speed, 8s) linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
+}
+.avatar-frame-ring-reverse {
+  animation: avatar-frame-spin-reverse var(--frame-speed, 10s) linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
+}
+.avatar-frame-flicker {
+  animation: avatar-frame-flicker 140ms steps(2, end) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .avatar-frame-ring,
+  .avatar-frame-ring-reverse,
+  .avatar-frame-flicker {
+    animation: none !important;
+  }
+}
