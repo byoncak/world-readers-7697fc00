@@ -7,10 +7,10 @@ interface HolographicBorderProps {
   className?: string;
 }
 
-const sizeMap = {
-  sm: 36,
-  md: 44,
-  lg: 80,
+const sizeClasses = {
+  sm: 'h-9 w-9',
+  md: 'h-11 w-11',
+  lg: 'h-20 w-20',
 } as const;
 
 // Iridescent rainbow — blue → cyan → green → pink → purple → blue.
@@ -22,29 +22,23 @@ const HOLO_SHIMMER =
   'conic-gradient(from 0deg, transparent 0deg, transparent 150deg, rgba(255,255,255,0.55) 180deg, rgba(255,255,255,0.55) 205deg, transparent 235deg, transparent 360deg)';
 
 const HolographicBorder = memo(({ children, size = 'sm', className }: HolographicBorderProps) => {
-  const baseDims = sizeMap[size];
-
   return (
-    <div
-      className={cn('relative shrink-0', className)}
-      style={{ width: baseDims, height: baseDims, overflow: 'visible' }}
-    >
-      {/* Iridescent ring, rotating. Soft cool-blue outer glow via box-shadow. */}
+    <div className={cn('relative shrink-0 rounded-full holo-breathe', sizeClasses[size], className)}>
+      {/* Iridescent ring rotates AND continuously hue-rotates so colors cycle through the spectrum. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-[-11%] rounded-full avatar-frame-ring"
+        className="pointer-events-none absolute inset-0 rounded-full avatar-frame-ring holo-hue"
         style={{
           background: HOLO_GRADIENT,
-          boxShadow: '0 0 12px 2px rgba(90,140,255,0.35), 0 0 22px 4px rgba(140,110,255,0.22)',
           ['--frame-speed' as string]: '6s',
           zIndex: 0,
         }}
       />
 
-      {/* Subtle counter-rotating white shimmer */}
+      {/* Counter-rotating white shimmer */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-[-11%] rounded-full avatar-frame-ring-reverse mix-blend-overlay opacity-70"
+        className="pointer-events-none absolute inset-0 rounded-full avatar-frame-ring-reverse mix-blend-overlay opacity-70"
         style={{
           background: HOLO_SHIMMER,
           ['--frame-speed' as string]: '9s',
@@ -52,9 +46,9 @@ const HolographicBorder = memo(({ children, size = 'sm', className }: Holographi
         }}
       />
 
-      {/* Avatar — covers ring center */}
+      {/* Avatar inset inward — the ring shows as a band around it. */}
       <div
-        className="relative z-[2] h-full w-full overflow-hidden rounded-full"
+        className="absolute inset-[9%] rounded-full overflow-hidden bg-muted z-[2]"
         style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.5)' }}
       >
         {children}

@@ -9,10 +9,10 @@ interface ElectricBorderProps {
   variantKey?: string;
 }
 
-const sizeMap = {
-  sm: 36,
-  md: 44,
-  lg: 80,
+const sizeClasses = {
+  sm: 'h-9 w-9',
+  md: 'h-11 w-11',
+  lg: 'h-20 w-20',
 } as const;
 
 // Two-tone palettes per variant: [base ring, animated arc]
@@ -25,42 +25,55 @@ const VARIANT_COLORS: Record<string, { base: string; spark: string }> = {
 };
 
 const ElectricBorder = memo(({ children, size = 'sm', className, variantKey }: ElectricBorderProps) => {
-  const baseDims = sizeMap[size];
   const palette = VARIANT_COLORS[variantKey || ''] || VARIANT_COLORS.ember;
 
-  // Bright ~70° arc in spark color, transparent elsewhere.
+  // Bright ~70° spark arc in spark color, transparent elsewhere.
   const sparkGradient = `conic-gradient(from 0deg, transparent 0deg, transparent 145deg, ${palette.spark} 180deg, ${palette.spark} 215deg, transparent 250deg, transparent 360deg)`;
+  // Dimmer, narrower counter-rotating arc — offset so the two arcs rarely align.
+  const counterGradient = `conic-gradient(from 45deg, transparent 0deg, transparent 155deg, ${palette.spark}99 180deg, ${palette.spark}77 205deg, transparent 230deg, transparent 360deg)`;
 
   return (
-    <div
-      className={cn('relative shrink-0', className)}
-      style={{ width: baseDims, height: baseDims, overflow: 'visible' }}
-    >
-      {/* Static base ring + glow (behind everything) */}
+    <div className={cn('relative shrink-0 rounded-full', sizeClasses[size], className)}>
+      {/* Static base ring in the base color, with a stuttering electrical flicker on the glow. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-[-10%] rounded-full"
+        className="pointer-events-none absolute inset-0 rounded-full electric-flicker"
         style={{
           background: palette.base,
-          boxShadow: `0 0 10px 1px ${palette.base}80, 0 0 18px 2px ${palette.base}55`,
+          boxShadow: `0 0 8px 1px ${palette.base}80, 0 0 16px 2px ${palette.base}55`,
           zIndex: 0,
         }}
       />
 
-      {/* Rotating spark arc */}
+      {/* Fast bright spark arc */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-[-14%] rounded-full avatar-frame-ring"
+        className="pointer-events-none absolute inset-0 rounded-full avatar-frame-ring"
         style={{
           background: sparkGradient,
           filter: `drop-shadow(0 0 4px ${palette.spark})`,
-          ['--frame-speed' as string]: '1.6s',
+          ['--frame-speed' as string]: '1.4s',
           zIndex: 1,
         }}
       />
 
-      {/* Avatar — covers ring center, showing only the outer donut band */}
-      <div className="relative z-[2] h-full w-full overflow-hidden rounded-full">{children}</div>
+      {/* Dimmer counter-rotating arc for chaotic feel */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 rounded-full avatar-frame-ring-reverse"
+        style={{
+          background: counterGradient,
+          filter: `drop-shadow(0 0 3px ${palette.spark})`,
+          ['--frame-speed' as string]: '2.3s',
+          zIndex: 1,
+          opacity: 0.7,
+        }}
+      />
+
+      {/* Avatar inset inward so ring reads as a band, not a growth. */}
+      <div className="absolute inset-[9%] rounded-full overflow-hidden bg-muted z-[2]">
+        {children}
+      </div>
     </div>
   );
 });
