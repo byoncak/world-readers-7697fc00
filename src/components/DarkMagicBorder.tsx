@@ -19,6 +19,13 @@ const contentInsetClasses = {
   lg: 'inset-[6px]',
 };
 
+// 3 orbiting embers at slightly different radii + speeds; one counter-rotates.
+const EMBERS = [
+  { speed: '3s', top: '3%', reverse: false },
+  { speed: '5s', top: '9%', reverse: true },
+  { speed: '7s', top: '15%', reverse: false },
+] as const;
+
 const DarkMagicBorder = forwardRef<HTMLDivElement, DarkMagicBorderProps>(
   ({ children, size = 'sm', className }, ref) => {
     return (
@@ -27,6 +34,19 @@ const DarkMagicBorder = forwardRef<HTMLDivElement, DarkMagicBorderProps>(
           <div className={cn('dark-magic-content absolute rounded-full bg-muted overflow-hidden z-[5]', contentInsetClasses[size])}>
             {children}
           </div>
+          {EMBERS.map((e, i) => (
+            <div
+              key={i}
+              aria-hidden
+              className={cn('pointer-events-none absolute inset-0 rounded-full z-[6]', e.reverse ? 'avatar-frame-ring-reverse' : 'avatar-frame-ring')}
+              style={{ ['--frame-speed' as string]: e.speed }}
+            >
+              <span
+                className="dark-magic-ember absolute"
+                style={{ top: e.top, left: '50%', transform: 'translateX(-50%)' }}
+              />
+            </div>
+          ))}
         </div>
       </div>
     );
