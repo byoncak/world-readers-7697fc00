@@ -71,7 +71,7 @@ const Index = () => {
   }, [user]);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6 pb-20 sm:pb-6 space-y-12">
+    <main className="mx-auto max-w-3xl px-4 py-6 pb-20 sm:pb-6 space-y-12 animate-page-in">
       {/* Hero: current book + your progress */}
       <CurrentBookWidget />
 
