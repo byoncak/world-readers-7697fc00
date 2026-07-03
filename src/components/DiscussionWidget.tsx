@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, memo, lazy, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { MessageCircle, Send, X, Paperclip, ChevronDown, ChevronUp, CornerDownRight, Plus } from 'lucide-react';
@@ -6,7 +6,7 @@ import MentionInput from './MentionInput';
 import MentionText from './MentionText';
 import { format, formatDistanceToNow } from 'date-fns';
 import ConfirmDialog from './ConfirmDialog';
-import GiphyPicker from './GiphyPicker';
+const GiphyPicker = lazy(() => import('./GiphyPicker'));
 import DiscussionReactions from './DiscussionReactions';
 import StyledName from './StyledName';
 import UserAvatar from './UserAvatar';
@@ -530,10 +530,12 @@ const DiscussionWidget = () => {
                     collisionPadding={12}
                     className="w-[min(92vw,360px)] p-0 border-border/40 rounded-2xl shadow-lg overflow-hidden bg-card"
                   >
-                    <GiphyPicker
-                      onSelect={(url) => { setGifUrl(url); setShowGifPicker(false); }}
-                      onClose={() => setShowGifPicker(false)}
-                    />
+                    <Suspense fallback={<div className="p-4 text-xs text-muted-foreground">Loading…</div>}>
+                      <GiphyPicker
+                        onSelect={(url) => { setGifUrl(url); setShowGifPicker(false); }}
+                        onClose={() => setShowGifPicker(false)}
+                      />
+                    </Suspense>
                   </PopoverContent>
                 </Popover>
                 <button

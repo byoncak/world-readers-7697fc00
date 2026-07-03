@@ -32,6 +32,8 @@ export default defineConfig(({ mode }) => ({
           if (id.includes("@radix-ui")) return "vendor-radix";
           if (id.includes("@tanstack")) return "vendor-query";
           if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
+          if (id.includes("@giphy") || id.includes("styled-components")) return "vendor-giphy";
+          if (id.includes("date-fns")) return "vendor-date";
           return undefined;
         },
       },
