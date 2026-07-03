@@ -556,10 +556,12 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
                     collisionPadding={12}
                     className="w-[min(92vw,360px)] p-0 border-border/40 rounded-2xl shadow-lg overflow-hidden bg-card"
                   >
-                    <GiphyPicker
-                      onSelect={handleGifSelect}
-                      onClose={() => setShowGifPicker(false)}
-                    />
+                    <Suspense fallback={<div className="p-4 text-xs text-muted-foreground">Loading…</div>}>
+                      <GiphyPicker
+                        onSelect={handleGifSelect}
+                        onClose={() => setShowGifPicker(false)}
+                      />
+                    </Suspense>
                   </PopoverContent>
                 </Popover>
                 <button
