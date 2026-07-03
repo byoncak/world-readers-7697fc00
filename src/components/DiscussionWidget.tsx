@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, memo, lazy, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { MessageCircle, Send, X, Paperclip, ChevronDown, ChevronUp, CornerDownRight, Plus } from 'lucide-react';
@@ -6,7 +6,7 @@ import MentionInput from './MentionInput';
 import MentionText from './MentionText';
 import { format, formatDistanceToNow } from 'date-fns';
 import ConfirmDialog from './ConfirmDialog';
-import GiphyPicker from './GiphyPicker';
+const GiphyPicker = lazy(() => import('./GiphyPicker'));
 import DiscussionReactions from './DiscussionReactions';
 import StyledName from './StyledName';
 import UserAvatar from './UserAvatar';
