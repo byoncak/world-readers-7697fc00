@@ -50,7 +50,7 @@ const Shop = () => {
   }, [tab]);
 
   return (
-    <main className="mx-auto max-w-3xl px-4 pt-6 pb-32">
+    <main className="mx-auto max-w-3xl px-4 pt-6 pb-32 animate-page-in">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <Apple className="h-6 w-6 text-primary" />

@@ -366,7 +366,7 @@ const MemberProfile = () => {
     <>
 
 
-      <main className="mx-auto max-w-5xl px-4 py-6 pb-20 sm:pb-6">
+      <main className="mx-auto max-w-5xl px-4 py-6 pb-20 sm:pb-6 animate-page-in">
         {!profile ? (
           <p className="py-12 text-center text-muted-foreground font-body">Member not found.</p>
         ) : (

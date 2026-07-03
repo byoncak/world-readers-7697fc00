@@ -94,7 +94,7 @@ const Clubs = () => {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 space-y-6">
+    <div className="mx-auto max-w-5xl px-4 py-6 space-y-6 animate-page-in">
       <div>
         <h1 className="font-display text-3xl font-bold">Your book clubs</h1>
         <p className="text-muted-foreground">Join one, start your own, or browse what the community is reading.</p>

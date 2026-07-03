@@ -190,7 +190,7 @@ const Activity = () => {
   const orderedBuckets = Object.keys(grouped);
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-6 pb-20 sm:pb-6">
+    <main className="mx-auto max-w-2xl px-4 py-6 pb-20 sm:pb-6 animate-page-in">
       <header className="mb-5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />

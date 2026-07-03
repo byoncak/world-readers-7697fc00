@@ -34,7 +34,7 @@ const Journal = () => {
   }, [tab]);
 
   return (
-    <main className="mx-auto max-w-5xl px-4 pt-1 pb-6 sm:py-6">
+    <main className="mx-auto max-w-5xl px-4 pt-1 pb-6 sm:py-6 animate-page-in">
       <div className="relative mb-2 flex shrink-0 border-b border-border/50">
         {TABS.map((t, i) => (
           <button
