@@ -1,8 +1,9 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import AppHeader from '@/components/AppHeader';
 import MobileBottomNav from '@/components/MobileBottomNav';
-import MeetingRsvpHud from '@/components/MeetingRsvpHud';
+const MeetingRsvpHud = lazy(() => import('@/components/MeetingRsvpHud'));
 import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 import { ClubProvider } from '@/contexts/ClubContext';
 
