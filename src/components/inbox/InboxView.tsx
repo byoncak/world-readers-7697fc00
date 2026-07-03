@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,7 +6,7 @@ import { MessageCircle, BookOpen, Send, ArrowLeft, PenSquare, Search, Paperclip,
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import UserAvatar from '@/components/UserAvatar';
-import GiphyPicker from '@/components/GiphyPicker';
+const GiphyPicker = lazy(() => import('@/components/GiphyPicker'));
 import MentionInput from '@/components/MentionInput';
 import MentionText from '@/components/MentionText';
 import StyledName from '@/components/StyledName';
