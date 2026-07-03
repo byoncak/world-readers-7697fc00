@@ -80,7 +80,7 @@ const Shop = () => {
             key={c.key}
             ref={el => { tabsRef.current[i] = el; }}
             onClick={() => setTab(c.key)}
-            className={`relative flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] sm:text-xs font-body tracking-wide leading-tight transition-colors duration-200 ${
+            className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[44px] py-2.5 text-[10px] sm:text-xs font-body tracking-wide leading-tight transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm ${
               tab === c.key
                 ? 'font-semibold text-foreground'
                 : 'font-medium text-muted-foreground hover:text-foreground'
