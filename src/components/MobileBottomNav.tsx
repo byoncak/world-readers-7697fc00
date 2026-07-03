@@ -40,7 +40,7 @@ const MobileBottomNav = () => {
               key={key}
               to={to}
               onClick={() => scrollHomeToTop(key)}
-              className={`relative flex flex-1 flex-col items-center gap-0.5 text-[10px] font-medium transition-colors ${
+              className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 min-h-[44px] py-1.5 text-[10px] font-medium transition-colors active:scale-[0.96] ${
                 active ? 'text-primary' : home ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
