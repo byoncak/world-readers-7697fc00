@@ -60,6 +60,9 @@ const Auth = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [searchParams] = useSearchParams();
+  const nextRaw = searchParams.get('next');
+  const nextPath = nextRaw && nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/';
 
   if (loading) {
     return (
@@ -68,10 +71,6 @@ const Auth = () => {
       </div>
     );
   }
-
-  const [searchParams] = useSearchParams();
-  const nextRaw = searchParams.get('next');
-  const nextPath = nextRaw && nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/';
 
   if (user) return <Navigate to={nextPath} replace />;
 
