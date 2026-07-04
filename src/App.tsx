@@ -37,6 +37,7 @@ const Activity = lazy(() => import("./pages/Activity"));
 const Construction = lazy(() => import("./pages/Construction"));
 const Clubs = lazy(() => import("./pages/Clubs"));
 const ClubManage = lazy(() => import("./pages/ClubManage"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 import HomeRedirect from "@/components/HomeRedirect";
 import ClubGate from "@/components/ClubGate";
 
@@ -69,6 +70,7 @@ const App = () => (
             <ErrorBoundary>
             <Routes>
               <Route element={<MaintenanceGate />}>
+                <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/construction" element={<Construction />} />
                 <Route element={<AuthLayout />}>
