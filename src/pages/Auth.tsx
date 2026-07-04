@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -60,6 +60,9 @@ const Auth = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [searchParams] = useSearchParams();
+  const nextRaw = searchParams.get('next');
+  const nextPath = nextRaw && nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/';
 
   if (loading) {
     return (
@@ -69,7 +72,7 @@ const Auth = () => {
     );
   }
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={nextPath} replace />;
 
   // Generate a deterministic email from the name
   const nameToEmail = (n: string) =>
