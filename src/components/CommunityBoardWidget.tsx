@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { StickyNote, Send } from 'lucide-react';
 import StyledName from './StyledName';
 import { formatDistanceToNow } from 'date-fns';
+import { LoadingBlock, ErrorBlock, EmptyBlock } from '@/components/StateBlock';
 
 interface Message {
   id: string;
