@@ -54,19 +54,23 @@ const RatingsReviews = () => {
   const [editing, setEditing] = useState(false);
   const [existingId, setExistingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from('books')
-        .select('id, title, author, cover_url')
-        .eq('status', 'completed')
-        .order('meeting_date', { ascending: false, nullsFirst: false });
-      setCompletedBooks(data || []);
-      if (data?.length) setSelectedBook(data[0].id);
-      setLoading(false);
-    })();
+  const loadBooks = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    const { data, error: err } = await supabase
+      .from('books')
+      .select('id, title, author, cover_url')
+      .eq('status', 'completed')
+      .order('meeting_date', { ascending: false, nullsFirst: false });
+    if (err) { setError(true); setLoading(false); return; }
+    setCompletedBooks(data || []);
+    if (data?.length) setSelectedBook(data[0].id);
+    setLoading(false);
   }, []);
+
+  useEffect(() => { loadBooks(); }, [loadBooks]);
 
   useEffect(() => {
     if (!selectedBook) return;
