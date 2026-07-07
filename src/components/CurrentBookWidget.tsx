@@ -34,6 +34,8 @@ const CurrentBookWidget = () => {
   const cosmetics = useEquippedCosmetics(user?.id);
   const equippedBarClass = cosmetics?.progressBarClass || '';
   const [book, setBook] = useState<Book | null>(null);
+  const [bookLoading, setBookLoading] = useState(true);
+  const [bookError, setBookError] = useState(false);
   const [progress, setProgress] = useState<Progress[]>([]);
   const [myPage, setMyPage] = useState(0);
   const [updating, setUpdating] = useState(false);
