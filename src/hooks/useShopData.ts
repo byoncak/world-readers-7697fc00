@@ -100,5 +100,5 @@ export const useShopData = (userId: string | undefined) => {
 
   const clearLastUnlocked = useCallback(() => setLastUnlocked(null), []);
 
-  return { items, loading, owned, buying, setBuying, purchasing, points, testMode, handlePurchase, handleRelock, purchaseItem, lastUnlocked, clearLastUnlocked };
+  return { items, loading, error, refetch: load, owned, buying, setBuying, purchasing, points, testMode, handlePurchase, handleRelock, purchaseItem, lastUnlocked, clearLastUnlocked };
 };
