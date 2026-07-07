@@ -11,6 +11,7 @@ import DiscussionReactions from './DiscussionReactions';
 import StyledName from './StyledName';
 import UserAvatar from './UserAvatar';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { LoadingBlock, ErrorBlock, EmptyBlock } from '@/components/StateBlock';
 
 interface Discussion {
   id: string;
