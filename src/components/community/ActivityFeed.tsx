@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { Activity, MessageCircle, BookOpen, ThumbsUp, UserPlus, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import UserAvatar from '@/components/UserAvatar';
+import { LoadingBlock, ErrorBlock, EmptyBlock } from '@/components/StateBlock';
 
 interface FeedEvent {
   id: string;
