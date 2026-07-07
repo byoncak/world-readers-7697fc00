@@ -232,10 +232,36 @@ const CurrentBookWidget = () => {
     }
   };
 
+  if (bookLoading && !book) {
+    return (
+      <div className="col-span-full flex flex-col items-center justify-center py-12 gap-3">
+        <Sparkles className="h-8 w-8 text-soft-gold" aria-hidden="true" />
+        <p className="cozy-subtitle">Loading your current book…</p>
+      </div>
+    );
+  }
+
+  if (bookError && !book) {
+    return (
+      <div className="col-span-full py-8">
+        <div className="mx-auto max-w-sm flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-4 text-center">
+          <p className="text-sm text-muted-foreground font-body">Couldn't load the current book.</p>
+          <button
+            type="button"
+            onClick={fetchCurrentBook}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-card px-3 py-1.5 text-xs font-semibold text-foreground border border-border/60 shadow-sm hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!book) {
     return (
       <div className="col-span-full flex flex-col items-center justify-center py-12">
-        <Sparkles className="mb-3 h-10 w-10 text-soft-gold animate-gentle-bounce" />
+        <Sparkles className="mb-3 h-10 w-10 text-soft-gold animate-gentle-bounce" aria-hidden="true" />
         <h2 className="cozy-title text-2xl">No current book yet!</h2>
         <p className="cozy-subtitle mt-1">Time to pick your next adventure ✨</p>
       </div>
