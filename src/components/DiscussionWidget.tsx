@@ -480,8 +480,12 @@ const DiscussionWidget = () => {
                 <span className="truncate">
                   Replying to <strong className="text-foreground">{(replyTo.profiles as any)?.display_name || 'Reader'}</strong>
                 </span>
-                <button onClick={() => setReplyTo(null)} className="ml-auto text-muted-foreground/60 hover:text-foreground">
-                  <X className="h-3.5 w-3.5" />
+                <button
+                  onClick={() => setReplyTo(null)}
+                  className="ml-auto text-muted-foreground/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                  aria-label="Cancel reply"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
               </div>
             )}
