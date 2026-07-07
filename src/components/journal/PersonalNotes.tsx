@@ -136,9 +136,10 @@ const PersonalNotes = () => {
                 >
                   <button
                     onClick={() => deleteNote(n.id)}
-                    className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 hover:text-destructive"
+                    className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground/40 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                    aria-label="Delete note"
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-3 w-3" aria-hidden="true" />
                   </button>
                   <p className="text-xs text-foreground/85 font-body whitespace-pre-wrap leading-relaxed pr-4">{n.note_text}</p>
                   <div className="flex items-center gap-1 mt-2">
