@@ -597,10 +597,11 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       {/* FAB */}
       <button
         onClick={openNewMessageDialog}
-        className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full bg-secondary text-secondary-foreground shadow-lg flex items-center justify-center hover:scale-105 transition-transform active:scale-95"
+        className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full bg-secondary text-secondary-foreground shadow-lg flex items-center justify-center hover:scale-105 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         title="New message"
+        aria-label="Start a new message"
       >
-        <PenSquare className="h-5 w-5" />
+        <PenSquare className="h-5 w-5" aria-hidden="true" />
       </button>
 
 
