@@ -26,29 +26,33 @@ const ICONS = {
 const ActivityFeed = ({ defaultOpen = false }: { defaultOpen?: boolean }) => {
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [open, setOpen] = useState(defaultOpen);
 
-  useEffect(() => {
-    (async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
       const allEvents: FeedEvent[] = [];
 
-      const { data: discussions } = await supabase
-        .from('discussions')
-        .select('id, user_id, created_at, parent_id')
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      const { data: cheers } = await supabase
-        .from('cheers')
-        .select('id, from_user_id, to_user_id, created_at, message')
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      const { data: members } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, avatar_url, created_at')
-        .order('created_at', { ascending: false })
-        .limit(5);
+      const [{ data: discussions, error: dErr }, { data: cheers, error: cErr }, { data: members, error: mErr }] = await Promise.all([
+        supabase
+          .from('discussions')
+          .select('id, user_id, created_at, parent_id')
+          .order('created_at', { ascending: false })
+          .limit(10),
+        supabase
+          .from('cheers')
+          .select('id, from_user_id, to_user_id, created_at, message')
+          .order('created_at', { ascending: false })
+          .limit(10),
+        supabase
+          .from('profiles')
+          .select('user_id, display_name, avatar_url, created_at')
+          .order('created_at', { ascending: false })
+          .limit(5),
+      ]);
+      if (dErr || cErr || mErr) throw dErr || cErr || mErr;
 
       const userIds = new Set<string>();
       discussions?.forEach(d => userIds.add(d.user_id));
@@ -102,9 +106,14 @@ const ActivityFeed = ({ defaultOpen = false }: { defaultOpen?: boolean }) => {
 
       allEvents.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setEvents(allEvents.slice(0, 20));
+    } catch {
+      setError(true);
+    } finally {
       setLoading(false);
-    })();
+    }
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   return (
     <div className="cozy-card">
