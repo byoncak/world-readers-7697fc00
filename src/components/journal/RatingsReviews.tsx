@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 import UserAvatar from '@/components/UserAvatar';
 import StyledName from '@/components/StyledName';
 import { shortenTitle } from '@/lib/utils';
+import { LoadingBlock, ErrorBlock, EmptyBlock } from '@/components/StateBlock';
 
 interface Book {
   id: string;
@@ -53,19 +54,23 @@ const RatingsReviews = () => {
   const [editing, setEditing] = useState(false);
   const [existingId, setExistingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from('books')
-        .select('id, title, author, cover_url')
-        .eq('status', 'completed')
-        .order('meeting_date', { ascending: false, nullsFirst: false });
-      setCompletedBooks(data || []);
-      if (data?.length) setSelectedBook(data[0].id);
-      setLoading(false);
-    })();
+  const loadBooks = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    const { data, error: err } = await supabase
+      .from('books')
+      .select('id, title, author, cover_url')
+      .eq('status', 'completed')
+      .order('meeting_date', { ascending: false, nullsFirst: false });
+    if (err) { setError(true); setLoading(false); return; }
+    setCompletedBooks(data || []);
+    if (data?.length) setSelectedBook(data[0].id);
+    setLoading(false);
   }, []);
+
+  useEffect(() => { loadBooks(); }, [loadBooks]);
 
   useEffect(() => {
     if (!selectedBook) return;
@@ -150,8 +155,9 @@ const RatingsReviews = () => {
 
   const avgRating = ratings.length ? (ratings.reduce((s, r) => s + r.rating, 0) / ratings.length).toFixed(1) : null;
 
-  if (loading) return <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>;
-  if (!completedBooks.length) return <p className="py-8 text-center text-sm text-muted-foreground font-body">No completed books to rate yet 📖</p>;
+  if (loading) return <div className="py-8"><LoadingBlock label="Loading reviews…" rows={3} /></div>;
+  if (error) return <div className="py-8"><ErrorBlock message="Couldn't load reviews." onRetry={loadBooks} /></div>;
+  if (!completedBooks.length) return <EmptyBlock className="py-8" message="No completed books to rate yet — finish one first 📖" />;
 
   const book = completedBooks.find(b => b.id === selectedBook);
 

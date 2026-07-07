@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Lock, Trash2, Plus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { LoadingBlock, ErrorBlock } from '@/components/StateBlock';
 
 interface NoteItem {
   id: string;
@@ -23,31 +24,35 @@ const PersonalNotes = () => {
   const [text, setText] = useState('');
   const [page, setPage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!user) return;
-
-    const { data: book } = await supabase
+    setError(false);
+    const { data: book, error: bookErr } = await supabase
       .from('books')
       .select('id, title')
       .eq('status', 'current')
       .maybeSingle();
 
+    if (bookErr) { setError(true); setLoading(false); return; }
+
     setCurrentBook(book);
     if (!book) { setNotes([]); setLoading(false); return; }
 
-    const { data } = await supabase
+    const { data, error: notesErr } = await supabase
       .from('personal_notes')
       .select('*')
       .eq('book_id', book.id)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    setNotes(data || []);
+    if (notesErr) setError(true);
+    else setNotes(data || []);
     setLoading(false);
-  };
+  }, [user]);
 
-  useEffect(() => { fetchData(); }, [user]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +73,8 @@ const PersonalNotes = () => {
     fetchData();
   };
 
-  if (loading) return <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>;
+  if (loading) return <div className="py-8"><LoadingBlock label="Loading notes…" rows={3} /></div>;
+  if (error) return <div className="py-8"><ErrorBlock message="Couldn't load your notes." onRetry={fetchData} /></div>;
 
   return (
     <div className="flex flex-col h-full pt-1">
@@ -130,9 +136,10 @@ const PersonalNotes = () => {
                 >
                   <button
                     onClick={() => deleteNote(n.id)}
-                    className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 hover:text-destructive"
+                    className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-muted-foreground/40 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                    aria-label="Delete note"
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-3 w-3" aria-hidden="true" />
                   </button>
                   <p className="text-xs text-foreground/85 font-body whitespace-pre-wrap leading-relaxed pr-4">{n.note_text}</p>
                   <div className="flex items-center gap-1 mt-2">

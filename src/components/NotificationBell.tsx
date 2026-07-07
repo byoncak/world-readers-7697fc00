@@ -249,12 +249,18 @@ const NotificationBell = () => {
     <div ref={ref} className="relative">
       <button
         onClick={handleToggle}
-        className="cozy-btn-ghost relative p-2"
+        className="cozy-btn-ghost relative p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
         title="Notifications"
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+        aria-haspopup="true"
+        aria-expanded={open}
       >
-        <Bell className="h-4 w-4" />
+        <Bell className="h-4 w-4" aria-hidden="true" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-terracotta text-[10px] font-bold text-white">
+          <span
+            aria-hidden="true"
+            className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-terracotta text-[10px] font-bold text-white"
+          >
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
