@@ -46,6 +46,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [fetching, setFetching] = useState(true);
+  const [convError, setConvError] = useState(false);
   const [activeConvo, setActiveConvo] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
