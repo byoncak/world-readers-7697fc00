@@ -62,10 +62,11 @@ const Shop = () => {
         </div>
         <button
           onClick={() => setShowHelp(true)}
-          className="rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          className="rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           title="How to earn points"
+          aria-label="How to earn points"
         >
-          <HelpCircle className="h-5 w-5" />
+          <HelpCircle className="h-5 w-5" aria-hidden="true" />
         </button>
       </div>
 
