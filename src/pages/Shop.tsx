@@ -99,7 +99,9 @@ const Shop = () => {
       </div>
 
       <div className="animate-fade-in pb-2" key={tab}>
-        {loading ? (
+        {error ? (
+          <ErrorBlock message="Couldn't load the shop." onRetry={refetch} className="my-8" />
+        ) : loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="rounded-2xl border border-border bg-card p-3 shadow-md">
