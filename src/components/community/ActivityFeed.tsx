@@ -120,24 +120,28 @@ const ActivityFeed = ({ defaultOpen = false }: { defaultOpen?: boolean }) => {
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between gap-2"
+        aria-expanded={open}
+        aria-label={open ? 'Collapse recent activity' : 'Expand recent activity'}
       >
         <div className="flex items-center gap-2">
-          <Activity className="h-5 w-5 text-primary" />
+          <Activity className="h-5 w-5 text-primary" aria-hidden="true" />
           <h2 className="cozy-title text-2xl">Recent Activity</h2>
-          {!loading && <span className="text-xs text-muted-foreground font-body">({events.length})</span>}
+          {!loading && !error && <span className="text-xs text-muted-foreground font-body">({events.length})</span>}
         </div>
         {open ? (
-          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          <ChevronUp className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
         )}
       </button>
       {open && (
         <div className="mt-4 space-y-0.5">
           {loading ? (
-            <div className="py-4 text-center text-xs text-muted-foreground">Loading activity…</div>
+            <LoadingBlock label="Loading activity…" rows={4} />
+          ) : error ? (
+            <ErrorBlock message="Couldn't fetch the latest activity." onRetry={load} />
           ) : !events.length ? (
-            <p className="py-4 text-center text-sm text-muted-foreground font-body">No activity yet 🌱</p>
+            <EmptyBlock message="No activity yet — say hi in the lounge! 🌱" />
           ) : (
             events.map(ev => {
               const Icon = ICONS[ev.type];
@@ -150,7 +154,7 @@ const ActivityFeed = ({ defaultOpen = false }: { defaultOpen?: boolean }) => {
                     size="sm"
                     className="h-6 w-6"
                   />
-                  <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <span className="min-w-0 flex-1 font-body">
                     <Link to={`/member/${ev.user_id}`} className="font-semibold text-foreground hover:underline">
                       {ev.display_name}
