@@ -153,8 +153,8 @@ const AdminInventoryManager = () => {
                               <span className="text-[10px] text-muted-foreground ml-1.5">{inv.shop_items?.category}</span>
                               {inv.equipped && <span className="ml-1.5 text-[10px] text-primary font-semibold">Equipped</span>}
                             </div>
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => revokeItem(inv.id)}>
-                              <Trash2 className="h-3.5 w-3.5" />
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => revokeItem(inv.id)} aria-label="Revoke item">
+                              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                             </Button>
                           </div>
                         ))}

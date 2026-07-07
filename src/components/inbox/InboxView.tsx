@@ -46,6 +46,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [fetching, setFetching] = useState(true);
+  const [convError, setConvError] = useState(false);
   const [activeConvo, setActiveConvo] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -158,13 +159,15 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   // Fetch conversation list
   const fetchConversations = useCallback(async () => {
     if (!user) return;
+    setConvError(false);
 
-    const { data: allMessages } = await supabase
+    const { data: allMessages, error: fetchErr } = await supabase
       .from('direct_messages')
       .select('*')
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order('created_at', { ascending: false });
 
+    if (fetchErr) { setConvError(true); setFetching(false); return; }
     if (!allMessages) { setFetching(false); return; }
 
     const convMap = new Map<string, { messages: typeof allMessages }>();
@@ -594,20 +597,32 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       {/* FAB */}
       <button
         onClick={openNewMessageDialog}
-        className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full bg-secondary text-secondary-foreground shadow-lg flex items-center justify-center hover:scale-105 transition-transform active:scale-95"
+        className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full bg-secondary text-secondary-foreground shadow-lg flex items-center justify-center hover:scale-105 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         title="New message"
+        aria-label="Start a new message"
       >
-        <PenSquare className="h-5 w-5" />
+        <PenSquare className="h-5 w-5" aria-hidden="true" />
       </button>
 
 
       {fetching ? (
         <div className="flex justify-center py-12">
-          <div className="animate-gentle-bounce"><BookOpen className="h-8 w-8 text-primary" /></div>
+          <div className="animate-gentle-bounce"><BookOpen className="h-8 w-8 text-primary" aria-hidden="true" /></div>
+        </div>
+      ) : convError ? (
+        <div className="cozy-card text-center py-8 space-y-3">
+          <p className="text-sm text-muted-foreground font-body">Couldn't load your messages.</p>
+          <button
+            type="button"
+            onClick={() => { setFetching(true); fetchConversations(); }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-card px-3 py-1.5 text-xs font-semibold text-foreground border border-border/60 shadow-sm hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Try again
+          </button>
         </div>
       ) : conversations.length === 0 ? (
         <div className="cozy-card text-center py-12">
-          <MessageCircle className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+          <MessageCircle className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" aria-hidden="true" />
           <p className="text-muted-foreground font-body">No conversations yet.</p>
           <p className="text-sm text-muted-foreground/60 font-body mt-1">Tap "New Message" to start chatting! 💬</p>
         </div>

@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import ShopItemCard from '@/components/shop/ShopItemCard';
 import UnlockSuccessDialog from '@/components/shop/UnlockSuccessDialog';
+import { ErrorBlock } from '@/components/StateBlock';
 import { useState, useRef, useEffect } from 'react';
 
 const CATEGORIES = [
@@ -35,7 +36,7 @@ type CategoryKey = typeof CATEGORIES[number]['key'];
 
 const Shop = () => {
   const { user } = useAuth();
-  const { items, loading, owned, points, testMode, handleRelock, purchaseItem, lastUnlocked, clearLastUnlocked } = useShopData(user?.id);
+  const { items, loading, error, refetch, owned, points, testMode, handleRelock, purchaseItem, lastUnlocked, clearLastUnlocked } = useShopData(user?.id);
   const [showHelp, setShowHelp] = useState(false);
   const [tab, setTab] = useState<CategoryKey>('avatar_frame');
   const tabsRef = useRef<(HTMLButtonElement | null)[]>([]);
@@ -61,10 +62,11 @@ const Shop = () => {
         </div>
         <button
           onClick={() => setShowHelp(true)}
-          className="rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          className="rounded-full p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           title="How to earn points"
+          aria-label="How to earn points"
         >
-          <HelpCircle className="h-5 w-5" />
+          <HelpCircle className="h-5 w-5" aria-hidden="true" />
         </button>
       </div>
 
@@ -97,7 +99,9 @@ const Shop = () => {
       </div>
 
       <div className="animate-fade-in pb-2" key={tab}>
-        {loading ? (
+        {error ? (
+          <ErrorBlock message="Couldn't load the shop." onRetry={refetch} className="my-8" />
+        ) : loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="rounded-2xl border border-border bg-card p-3 shadow-md">

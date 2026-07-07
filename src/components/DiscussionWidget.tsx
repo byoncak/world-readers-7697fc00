@@ -11,6 +11,7 @@ import DiscussionReactions from './DiscussionReactions';
 import StyledName from './StyledName';
 import UserAvatar from './UserAvatar';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { LoadingBlock, ErrorBlock, EmptyBlock } from '@/components/StateBlock';
 
 interface Discussion {
   id: string;
@@ -277,13 +278,23 @@ const DiscussionWidget = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
 
+  const [loadingDiscussions, setLoadingDiscussions] = useState(true);
+  const [discussionsError, setDiscussionsError] = useState(false);
+
   const fetchDiscussions = useCallback(async (bookId: string) => {
-    const { data } = await supabase
+    setDiscussionsError(false);
+    const { data, error } = await supabase
       .from('discussions')
       .select('*, profiles(display_name, avatar_url)')
       .eq('book_id', bookId)
       .order('created_at', { ascending: false })
       .limit(200);
+
+    if (error) {
+      setDiscussionsError(true);
+      setLoadingDiscussions(false);
+      return;
+    }
 
     if (data) {
       const all = data as any as Discussion[];
@@ -307,6 +318,7 @@ const DiscussionWidget = () => {
 
       setDiscussions(topLevel);
     }
+    setLoadingDiscussions(false);
   }, []);
 
   useEffect(() => {
@@ -433,10 +445,15 @@ const DiscussionWidget = () => {
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-1">
         <div className="flex flex-col gap-4 py-3">
-          {discussions.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground font-body">
-              No thoughts shared yet. Be the first! 🌱
-            </p>
+          {loadingDiscussions ? (
+            <LoadingBlock label="Loading the discussion…" rows={4} />
+          ) : discussionsError ? (
+            <ErrorBlock
+              message="Couldn't load the discussion."
+              onRetry={() => { if (currentBookId) { setLoadingDiscussions(true); fetchDiscussions(currentBookId); } }}
+            />
+          ) : discussions.length === 0 ? (
+            <EmptyBlock message="No thoughts shared yet. Be the first! 🌱" />
           ) : (
             discussions.map(d => (
               <PostCard
@@ -463,8 +480,12 @@ const DiscussionWidget = () => {
                 <span className="truncate">
                   Replying to <strong className="text-foreground">{(replyTo.profiles as any)?.display_name || 'Reader'}</strong>
                 </span>
-                <button onClick={() => setReplyTo(null)} className="ml-auto text-muted-foreground/60 hover:text-foreground">
-                  <X className="h-3.5 w-3.5" />
+                <button
+                  onClick={() => setReplyTo(null)}
+                  className="ml-auto text-muted-foreground/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                  aria-label="Cancel reply"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
               </div>
             )}

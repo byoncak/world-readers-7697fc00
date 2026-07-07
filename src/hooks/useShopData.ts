@@ -13,6 +13,7 @@ export const useShopData = (userId: string | undefined) => {
   const { toast } = useToast();
   const [items, setItems] = useState<ShopItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [owned, setOwned] = useState<Set<string>>(new Set());
   const [buying, setBuying] = useState<ShopItem | null>(null);
   const [purchasing, setPurchasing] = useState(false);
@@ -20,20 +21,25 @@ export const useShopData = (userId: string | undefined) => {
   const isTestUser = user?.email === 'testuser@bookclub.local';
   const testMode = isTestUser || localStorage.getItem('freeShopMode') === 'true';
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!userId) return;
-    const load = async () => {
-      setLoading(true);
-      const [{ data: shopData }, { data: invData }] = await Promise.all([
-        supabase.from('shop_items').select('*').eq('active', true).order('price'),
-        supabase.from('user_inventory').select('item_id').eq('user_id', userId),
-      ]);
-      setItems((shopData as ShopItem[]) ?? []);
-      setOwned(new Set((invData ?? []).map((i: any) => i.item_id)));
+    setLoading(true);
+    setError(false);
+    const [shopRes, invRes] = await Promise.all([
+      supabase.from('shop_items').select('*').eq('active', true).order('price'),
+      supabase.from('user_inventory').select('item_id').eq('user_id', userId),
+    ]);
+    if (shopRes.error || invRes.error) {
+      setError(true);
       setLoading(false);
-    };
-    load();
+      return;
+    }
+    setItems((shopRes.data as ShopItem[]) ?? []);
+    setOwned(new Set((invRes.data ?? []).map((i: any) => i.item_id)));
+    setLoading(false);
   }, [userId]);
+
+  useEffect(() => { load(); }, [load]);
 
   const purchaseItem = useCallback(async (item: ShopItem) => {
     if (!userId) return;
@@ -94,5 +100,5 @@ export const useShopData = (userId: string | undefined) => {
 
   const clearLastUnlocked = useCallback(() => setLastUnlocked(null), []);
 
-  return { items, loading, owned, buying, setBuying, purchasing, points, testMode, handlePurchase, handleRelock, purchaseItem, lastUnlocked, clearLastUnlocked };
+  return { items, loading, error, refetch: load, owned, buying, setBuying, purchasing, points, testMode, handlePurchase, handleRelock, purchaseItem, lastUnlocked, clearLastUnlocked };
 };

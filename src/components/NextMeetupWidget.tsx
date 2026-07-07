@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Calendar, Coffee, ChevronDown, ChevronUp } from 'lucide-react';
 import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, differenceInCalendarDays } from 'date-fns';
+import { LoadingBlock, ErrorBlock } from '@/components/StateBlock';
 
 const NextMeetupWidget = () => {
   const [meetingDate, setMeetingDate] = useState<Date | null>(null);
@@ -9,18 +10,20 @@ const NextMeetupWidget = () => {
   const [bookTitle, setBookTitle] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showCalendar, setShowCalendar] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    fetchNextMeeting();
-  }, []);
-
-  const fetchNextMeeting = async () => {
-    const { data } = await supabase
+  const fetchNextMeeting = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    const { data, error: err } = await supabase
       .from('books')
       .select('title, meeting_date, meeting_location')
       .eq('status', 'current')
       .not('meeting_date', 'is', null)
       .limit(1);
+
+    if (err) { setError(true); setLoading(false); return; }
 
     if (data && data.length > 0 && data[0].meeting_date) {
       const d = new Date(data[0].meeting_date);
@@ -29,7 +32,10 @@ const NextMeetupWidget = () => {
       setMeetingLocation(data[0].meeting_location);
       setCurrentMonth(d);
     }
-  };
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchNextMeeting(); }, [fetchNextMeeting]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -39,6 +45,30 @@ const NextMeetupWidget = () => {
   const dayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
   const daysLeft = meetingDate ? differenceInCalendarDays(meetingDate, new Date()) : null;
+
+  if (loading) {
+    return (
+      <section className="rounded-2xl border border-border/60 bg-muted/20 p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-terracotta" aria-hidden="true" />
+          <h2 className="font-display text-lg font-semibold text-foreground">Next Meetup</h2>
+        </div>
+        <LoadingBlock label="Loading meetup…" rows={2} />
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="rounded-2xl border border-border/60 bg-muted/20 p-5">
+        <div className="mb-3 flex items-center gap-2">
+          <Calendar className="h-4 w-4 text-terracotta" aria-hidden="true" />
+          <h2 className="font-display text-lg font-semibold text-foreground">Next Meetup</h2>
+        </div>
+        <ErrorBlock message="Couldn't load the meetup." onRetry={fetchNextMeeting} />
+      </section>
+    );
+  }
 
   if (!meetingDate) return null;
 
