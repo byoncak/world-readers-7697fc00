@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import ShopItemCard from '@/components/shop/ShopItemCard';
 import UnlockSuccessDialog from '@/components/shop/UnlockSuccessDialog';
+import { ErrorBlock } from '@/components/StateBlock';
 import { useState, useRef, useEffect } from 'react';
 
 const CATEGORIES = [
