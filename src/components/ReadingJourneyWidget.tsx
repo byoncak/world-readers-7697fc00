@@ -24,23 +24,52 @@ const spineColors = [
 
 const ReadingJourneyWidget = () => {
   const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    const fetch = async () => {
-      const { data } = await supabase
-        .from('books')
-        .select('id, title, author, status, cover_url, spine_art_url, meeting_date')
-        .order('selected_date', { ascending: true });
-      if (data) setBooks(data);
-    };
-    fetch();
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    const { data, error: err } = await supabase
+      .from('books')
+      .select('id, title, author, status, cover_url, spine_art_url, meeting_date')
+      .order('selected_date', { ascending: true });
+    if (err) setError(true);
+    else if (data) setBooks(data);
+    setLoading(false);
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) {
+    return (
+      <section className="px-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Library className="h-4 w-4 text-terracotta" aria-hidden="true" />
+          <h2 className="font-display text-lg font-semibold text-foreground">Our Bookshelf</h2>
+        </div>
+        <LoadingBlock label="Loading bookshelf…" rows={2} />
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="px-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Library className="h-4 w-4 text-terracotta" aria-hidden="true" />
+          <h2 className="font-display text-lg font-semibold text-foreground">Our Bookshelf</h2>
+        </div>
+        <ErrorBlock message="Couldn't load the bookshelf." onRetry={load} />
+      </section>
+    );
+  }
 
   if (books.length === 0) {
     return (
       <section className="px-5">
         <div className="flex items-center gap-2 mb-3">
-          <Library className="h-4 w-4 text-terracotta" />
+          <Library className="h-4 w-4 text-terracotta" aria-hidden="true" />
           <h2 className="font-display text-lg font-semibold text-foreground">Our Bookshelf</h2>
         </div>
         <p className="text-sm text-muted-foreground font-body">
