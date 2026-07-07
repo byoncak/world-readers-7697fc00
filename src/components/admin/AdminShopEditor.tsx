@@ -152,8 +152,8 @@ const AdminShopEditor = () => {
                             <p className="text-[11px] text-muted-foreground truncate">{item.description}</p>
                           )}
                         </div>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => startEdit(item)}>
-                          <Pencil className="h-3.5 w-3.5" />
+                        <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => startEdit(item)} aria-label="Edit item">
+                          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                         </Button>
                         <Button
                           size="sm"
