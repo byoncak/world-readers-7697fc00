@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Lock, Trash2, Plus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { LoadingBlock, ErrorBlock } from '@/components/StateBlock';
 
 interface NoteItem {
   id: string;
