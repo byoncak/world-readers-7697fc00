@@ -24,31 +24,35 @@ const PersonalNotes = () => {
   const [text, setText] = useState('');
   const [page, setPage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!user) return;
-
-    const { data: book } = await supabase
+    setError(false);
+    const { data: book, error: bookErr } = await supabase
       .from('books')
       .select('id, title')
       .eq('status', 'current')
       .maybeSingle();
 
+    if (bookErr) { setError(true); setLoading(false); return; }
+
     setCurrentBook(book);
     if (!book) { setNotes([]); setLoading(false); return; }
 
-    const { data } = await supabase
+    const { data, error: notesErr } = await supabase
       .from('personal_notes')
       .select('*')
       .eq('book_id', book.id)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    setNotes(data || []);
+    if (notesErr) setError(true);
+    else setNotes(data || []);
     setLoading(false);
-  };
+  }, [user]);
 
-  useEffect(() => { fetchData(); }, [user]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +73,8 @@ const PersonalNotes = () => {
     fetchData();
   };
 
-  if (loading) return <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>;
+  if (loading) return <div className="py-8"><LoadingBlock label="Loading notes…" rows={3} /></div>;
+  if (error) return <div className="py-8"><ErrorBlock message="Couldn't load your notes." onRetry={fetchData} /></div>;
 
   return (
     <div className="flex flex-col h-full pt-1">
