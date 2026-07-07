@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 import UserAvatar from '@/components/UserAvatar';
 import StyledName from '@/components/StyledName';
 import { shortenTitle } from '@/lib/utils';
+import { LoadingBlock, ErrorBlock, EmptyBlock } from '@/components/StateBlock';
 
 interface Book {
   id: string;
