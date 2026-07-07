@@ -155,8 +155,9 @@ const RatingsReviews = () => {
 
   const avgRating = ratings.length ? (ratings.reduce((s, r) => s + r.rating, 0) / ratings.length).toFixed(1) : null;
 
-  if (loading) return <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>;
-  if (!completedBooks.length) return <p className="py-8 text-center text-sm text-muted-foreground font-body">No completed books to rate yet 📖</p>;
+  if (loading) return <div className="py-8"><LoadingBlock label="Loading reviews…" rows={3} /></div>;
+  if (error) return <div className="py-8"><ErrorBlock message="Couldn't load reviews." onRetry={loadBooks} /></div>;
+  if (!completedBooks.length) return <EmptyBlock className="py-8" message="No completed books to rate yet — finish one first 📖" />;
 
   const book = completedBooks.find(b => b.id === selectedBook);
 
