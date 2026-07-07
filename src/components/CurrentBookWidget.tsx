@@ -76,13 +76,20 @@ const CurrentBookWidget = () => {
 
   const fetchCurrentBook = async () => {
     if (!clubId) return;
-    const { data: books } = await supabase
+    setBookLoading(true);
+    setBookError(false);
+    const { data: books, error } = await supabase
       .from('books')
       .select('*')
       .eq('status', 'current')
       .eq('club_id', clubId)
       .limit(1);
 
+    if (error) {
+      setBookError(true);
+      setBookLoading(false);
+      return;
+    }
 
     if (books && books.length > 0) {
       setBook(books[0]);
@@ -91,6 +98,7 @@ const CurrentBookWidget = () => {
       if (user) tasks.push(fetchTodayCheers(books[0].id));
       void Promise.all(tasks);
     }
+    setBookLoading(false);
   };
 
   const fetchProgress = async (bookId: string) => {
