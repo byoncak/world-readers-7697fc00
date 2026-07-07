@@ -445,10 +445,15 @@ const DiscussionWidget = () => {
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-1">
         <div className="flex flex-col gap-4 py-3">
-          {discussions.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground font-body">
-              No thoughts shared yet. Be the first! 🌱
-            </p>
+          {loadingDiscussions ? (
+            <LoadingBlock label="Loading the discussion…" rows={4} />
+          ) : discussionsError ? (
+            <ErrorBlock
+              message="Couldn't load the discussion."
+              onRetry={() => { if (currentBookId) { setLoadingDiscussions(true); fetchDiscussions(currentBookId); } }}
+            />
+          ) : discussions.length === 0 ? (
+            <EmptyBlock message="No thoughts shared yet. Be the first! 🌱" />
           ) : (
             discussions.map(d => (
               <PostCard
