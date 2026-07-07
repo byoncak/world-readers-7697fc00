@@ -75,8 +75,9 @@ const AvatarUpload = () => {
   return (
     <button
       onClick={() => fileInputRef.current?.click()}
-      className="relative h-9 w-9 shrink-0 rounded-full border-2 border-border bg-muted overflow-hidden transition-all hover:border-primary hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/30"
+      className="relative h-9 w-9 shrink-0 rounded-full border-2 border-border bg-muted overflow-hidden transition-all hover:border-primary hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       title="Change profile picture"
+      aria-label="Change profile picture"
       disabled={uploading}
     >
       {avatarUrl ? (
