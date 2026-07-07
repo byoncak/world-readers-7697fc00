@@ -159,13 +159,15 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   // Fetch conversation list
   const fetchConversations = useCallback(async () => {
     if (!user) return;
+    setConvError(false);
 
-    const { data: allMessages } = await supabase
+    const { data: allMessages, error: fetchErr } = await supabase
       .from('direct_messages')
       .select('*')
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order('created_at', { ascending: false });
 
+    if (fetchErr) { setConvError(true); setFetching(false); return; }
     if (!allMessages) { setFetching(false); return; }
 
     const convMap = new Map<string, { messages: typeof allMessages }>();
