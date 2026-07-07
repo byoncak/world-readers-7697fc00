@@ -277,13 +277,23 @@ const DiscussionWidget = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
 
+  const [loadingDiscussions, setLoadingDiscussions] = useState(true);
+  const [discussionsError, setDiscussionsError] = useState(false);
+
   const fetchDiscussions = useCallback(async (bookId: string) => {
-    const { data } = await supabase
+    setDiscussionsError(false);
+    const { data, error } = await supabase
       .from('discussions')
       .select('*, profiles(display_name, avatar_url)')
       .eq('book_id', bookId)
       .order('created_at', { ascending: false })
       .limit(200);
+
+    if (error) {
+      setDiscussionsError(true);
+      setLoadingDiscussions(false);
+      return;
+    }
 
     if (data) {
       const all = data as any as Discussion[];
@@ -307,6 +317,7 @@ const DiscussionWidget = () => {
 
       setDiscussions(topLevel);
     }
+    setLoadingDiscussions(false);
   }, []);
 
   useEffect(() => {
