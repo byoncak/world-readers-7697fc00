@@ -1075,7 +1075,24 @@
   .avatar-frame-ring-reverse,
   .electric-flicker,
   .holo-hue,
-  .holo-breathe {
+  .holo-breathe,
+  .cheer-float,
+  .cheer-banner,
+  .float,
+  .wiggle,
+  .cheer-pulse,
+  .shimmer-spin,
+  .gentle-bounce,
+  .gold-glow,
+  .adrian-swirl,
+  .chrome-sweep,
+  .dark-magic-ring,
+  .dark-magic-ring *,
+  .electric-border,
+  .electric-border *,
+  .holographic-border,
+  .holographic-border * {
     animation: none !important;
+    transition: none !important;
   }
 }
