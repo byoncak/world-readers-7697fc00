@@ -606,11 +606,22 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
 
       {fetching ? (
         <div className="flex justify-center py-12">
-          <div className="animate-gentle-bounce"><BookOpen className="h-8 w-8 text-primary" /></div>
+          <div className="animate-gentle-bounce"><BookOpen className="h-8 w-8 text-primary" aria-hidden="true" /></div>
+        </div>
+      ) : convError ? (
+        <div className="cozy-card text-center py-8 space-y-3">
+          <p className="text-sm text-muted-foreground font-body">Couldn't load your messages.</p>
+          <button
+            type="button"
+            onClick={() => { setFetching(true); fetchConversations(); }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-card px-3 py-1.5 text-xs font-semibold text-foreground border border-border/60 shadow-sm hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Try again
+          </button>
         </div>
       ) : conversations.length === 0 ? (
         <div className="cozy-card text-center py-12">
-          <MessageCircle className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+          <MessageCircle className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" aria-hidden="true" />
           <p className="text-muted-foreground font-body">No conversations yet.</p>
           <p className="text-sm text-muted-foreground/60 font-body mt-1">Tap "New Message" to start chatting! 💬</p>
         </div>
