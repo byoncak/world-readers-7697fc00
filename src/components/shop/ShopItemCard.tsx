@@ -12,12 +12,13 @@ interface ShopItemCardProps {
   canAfford: boolean;
   points: number;
   testMode: boolean;
+  purchasing?: boolean;
   stagger?: number;
   onBuy: (item: ShopItem) => void;
   onRelock: (item: ShopItem) => void;
 }
 
-const ShopItemCard = memo(({ item, isOwned, canAfford, points, testMode, stagger = 0, onBuy, onRelock }: ShopItemCardProps) => {
+const ShopItemCard = memo(({ item, isOwned, canAfford, points, testMode, purchasing = false, stagger = 0, onBuy, onRelock }: ShopItemCardProps) => {
   const shortfall = Math.max(0, item.price - points);
 
   return (
