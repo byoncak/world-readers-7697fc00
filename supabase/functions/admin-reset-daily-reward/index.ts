@@ -6,84 +6,53 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing auth" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!authHeader) return jsonErr("Missing auth", 401);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    const anonClient = createClient(supabaseUrl, anonKey, {
+    const anon = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
+    const { data: { user: caller }, error: userError } = await anon.auth.getUser();
+    if (!caller || userError) return jsonErr("Unauthorized", 401);
 
-    const {
-      data: { user: caller },
-      error: userError,
-    } = await anonClient.auth.getUser();
+    const admin = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    if (!caller || userError) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
-
-    const { data: isAdmin, error: roleError } = await adminClient.rpc("has_role", {
-      _user_id: caller.id,
-      _role: "admin",
-    });
-
-    if (roleError || !isAdmin) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const { data: isSuper } = await admin.rpc("is_super_user", { _user_id: caller.id });
+    if (!isSuper) return jsonErr("Forbidden — super user only", 403);
 
     const { target_user_id, day_start_iso } = await req.json();
+    if (!target_user_id || !day_start_iso) return jsonErr("Missing target_user_id or day_start_iso", 400);
 
-    if (!target_user_id || !day_start_iso) {
-      return new Response(JSON.stringify({ error: "Missing target_user_id or day_start_iso" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { error: deleteError, count } = await adminClient
+    const { error: delErr, count } = await admin
       .from("point_transactions")
       .delete({ count: "exact" })
       .eq("user_id", target_user_id)
       .eq("action_type", "daily_login")
       .gte("created_at", day_start_iso);
+    if (delErr) return jsonErr(delErr.message, 400);
 
-    if (deleteError) {
-      return new Response(JSON.stringify({ error: deleteError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    await admin.from("admin_audit_log").insert({
+      actor_id: caller.id,
+      action: "reset_daily_reward",
+      target_kind: "user",
+      target_id: target_user_id,
+      metadata: { day_start_iso, deleted: count ?? 0 },
+    });
 
     return new Response(JSON.stringify({ success: true, deleted: count ?? 0 }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonErr(error instanceof Error ? error.message : "Unknown error", 500);
   }
 });
+
+function jsonErr(msg: string, status: number) {
+  return new Response(JSON.stringify({ error: msg }), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}

@@ -6,81 +6,50 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing auth" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!authHeader) return jsonErr("Missing auth", 401);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // Verify the caller
-    const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    const anon = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: { user: caller }, error: userError } = await anonClient.auth.getUser();
-    if (!caller || userError) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const { data: { user: caller }, error: userError } = await anon.auth.getUser();
+    if (!caller || userError) return jsonErr("Unauthorized", 401);
 
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const admin = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Check caller is admin
-    const { data: isPriv } = await adminClient.rpc("is_privileged", { _user_id: caller.id });
-    if (!isPriv) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // Destructive: super user only.
+    const { data: isSuper } = await admin.rpc("is_super_user", { _user_id: caller.id });
+    if (!isSuper) return jsonErr("Forbidden — super user only", 403);
 
     const { target_user_id } = await req.json();
-    if (!target_user_id) {
-      return new Response(JSON.stringify({ error: "Missing target_user_id" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!target_user_id) return jsonErr("Missing target_user_id", 400);
+    if (target_user_id === caller.id) return jsonErr("Cannot delete yourself", 400);
 
-    // Prevent self-deletion
-    if (target_user_id === caller.id) {
-      return new Response(JSON.stringify({ error: "Cannot delete yourself" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const { error } = await admin.auth.admin.deleteUser(target_user_id);
+    if (error) return jsonErr(error.message, 400);
 
-    // Delete user data in order (cascade should handle most, but be thorough)
-    // Delete from auth.users (cascades to profiles via trigger/FK)
-    const { error } = await adminClient.auth.admin.deleteUser(target_user_id);
-
-    if (error) {
-      console.error("Delete user error:", error);
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    await admin.from("admin_audit_log").insert({
+      actor_id: caller.id,
+      action: "delete_member",
+      target_kind: "user",
+      target_id: target_user_id,
+    });
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error("Unhandled error:", e);
-    return new Response(JSON.stringify({ error: e.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonErr((e as Error).message, 500);
   }
 });
+
+function jsonErr(msg: string, status: number) {
+  return new Response(JSON.stringify({ error: msg }), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
