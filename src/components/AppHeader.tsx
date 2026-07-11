@@ -15,7 +15,8 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 
 const AppHeader = () => {
   const { user } = useAuth();
-  const { isPrivileged } = useRole();
+  const { isPrivileged, canManageCurrentClub } = useRole();
+  const canOpenAdmin = isPrivileged || canManageCurrentClub;
   const { club, clubId, memberships, isClubAdmin, clubPath } = useClub();
   const { pathname } = useLocation();
   const onClubsPage = pathname === '/clubs';
