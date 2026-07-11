@@ -1,5 +1,5 @@
 import { useMemo, useState, useId } from 'react';
-import { ChevronDown, Search } from 'lucide-react';
+import { ChevronDown, Search, Compass } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -15,7 +15,8 @@ interface Props {
   memberCounts: Record<string, number>;
   myClubIds: Set<string>;
   onJoin: (clubId: string, policy: 'instant' | 'approval', cap: number | null) => void;
-  defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
 }
 
 type SortKey = 'newest' | 'members';
@@ -26,9 +27,15 @@ const DiscoverSection = ({
   memberCounts,
   myClubIds,
   onJoin,
-  defaultOpen = false,
+  open: controlledOpen,
+  onOpenChange,
 }: Props) => {
-  const [open, setOpen] = useState(defaultOpen);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (v: boolean) => {
+    if (onOpenChange) onOpenChange(v);
+    else setUncontrolledOpen(v);
+  };
   const [query, setQuery] = useState('');
   const [size, setSize] = useState<SizeKey>('any');
   const [sort, setSort] = useState<SortKey>('newest');
