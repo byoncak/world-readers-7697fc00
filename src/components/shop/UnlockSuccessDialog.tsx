@@ -54,6 +54,7 @@ const UnlockSuccessDialog = ({ item, userId, open, onClose, onEquipped }: Props)
       }
       setEquipped(true);
       toast.success(`Equipped "${item.name}"! ✨`);
+      onEquipped?.();
     } finally {
       setEquipping(false);
     }
