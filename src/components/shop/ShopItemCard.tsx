@@ -1,10 +1,25 @@
 import { memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Check, Lock } from 'lucide-react';
+import { Check, Lock, Sparkles } from 'lucide-react';
 import ShopPreview from './ShopPreview';
 import HoldToUnlockButton from './HoldToUnlockButton';
 import type { ShopItem } from './ShopPreview';
+
+type Tier = 'common' | 'rare' | 'epic' | 'legendary';
+const tierFor = (price: number): Tier => {
+  if (price >= 1500) return 'legendary';
+  if (price >= 600) return 'epic';
+  if (price >= 200) return 'rare';
+  return 'common';
+};
+const TIER_META: Record<Tier, { label: string; ring: string; pedestal: string; badge: string; showSparkle: boolean }> = {
+  common:    { label: 'Common',    ring: 'border-border',                    pedestal: 'bg-muted/40',                                                             badge: 'bg-muted text-muted-foreground',                                   showSparkle: false },
+  rare:      { label: 'Rare',      ring: 'border-[hsl(var(--sage)/0.6)]',    pedestal: 'bg-[hsl(var(--sage)/0.15)]',                                              badge: 'bg-[hsl(var(--sage)/0.25)] text-[hsl(var(--secondary-foreground))]', showSparkle: false },
+  epic:      { label: 'Epic',      ring: 'border-[hsl(var(--soft-gold)/0.7)]', pedestal: 'bg-gradient-to-br from-[hsl(var(--peach)/0.45)] to-[hsl(var(--soft-gold)/0.25)]', badge: 'bg-[hsl(var(--soft-gold)/0.35)] text-[hsl(var(--warm-brown))]',  showSparkle: true  },
+  legendary: { label: 'Legendary', ring: 'border-[hsl(var(--soft-gold))] shadow-[0_0_0_1px_hsl(var(--soft-gold)/0.6)_inset]', pedestal: 'bg-gradient-to-br from-[hsl(var(--peach))] via-[hsl(var(--soft-gold)/0.5)] to-[hsl(var(--sage)/0.35)]', badge: 'bg-[hsl(var(--soft-gold))] text-[hsl(var(--warm-brown))]',        showSparkle: true  },
+};
+
 
 interface ShopItemCardProps {
   item: ShopItem;
