@@ -416,6 +416,9 @@ const CurrentBookWidget = () => {
             }).map((p) => {
               const isComplete = p.current_page >= totalPages;
               const isMe = p.user_id === user?.id;
+              // Self-cheer sandbox is a super-user-only preview flag. Non-super
+              // users have this key wiped by AdminTestingTools on mount, so the
+              // check here is a defensive read.
               const selfCheerEnabled = localStorage.getItem('selfCheerEnabled') === 'true';
               const canCheer = isCheerTime && !isComplete && (!isMe || selfCheerEnabled);
               const alreadyCheered = cheeredToday.has(p.user_id);
