@@ -22,9 +22,10 @@ interface Props {
   userId: string | undefined;
   open: boolean;
   onClose: () => void;
+  onEquipped?: () => void;
 }
 
-const UnlockSuccessDialog = ({ item, userId, open, onClose }: Props) => {
+const UnlockSuccessDialog = ({ item, userId, open, onClose, onEquipped }: Props) => {
   const navigate = useNavigate();
   const [equipping, setEquipping] = useState(false);
   const [equipped, setEquipped] = useState(false);
