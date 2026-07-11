@@ -1538,6 +1538,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_grant_shop_item: {
+        Args: { _club_id: string; _item_id: string; _target_user: string }
+        Returns: boolean
+      }
+      admin_relock_shop_item: {
+        Args: { _item_id: string; _target_user: string }
+        Returns: boolean
+      }
       award_points: {
         Args: {
           _action_type: string

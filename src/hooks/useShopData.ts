@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { usePoints } from '@/hooks/usePoints';
 import { useClub } from '@/contexts/ClubContext';
-import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { equipCosmetic } from '@/lib/equipCosmetic';
 import type { ShopItem } from '@/components/shop/ShopPreview';
@@ -11,7 +10,6 @@ import type { ShopItem } from '@/components/shop/ShopPreview';
 export const useShopData = (userId: string | undefined) => {
   const { points, refetch: refetchPoints } = usePoints();
   const { clubId } = useClub();
-  const { user } = useAuth();
   const { isPrivileged } = useRole();
   const { toast } = useToast();
   const [items, setItems] = useState<ShopItem[]>([]);
@@ -26,13 +24,12 @@ export const useShopData = (userId: string | undefined) => {
   // React setState boundary (state updates are batched; a ref is synchronous).
   const purchaseLock = useRef(false);
   const equipLock = useRef<Set<string>>(new Set());
-  const isTestUser = user?.email === 'testuser@bookclub.local';
   // Free-shop mode is a privileged-only testing affordance. Regular users
-  // flipping localStorage cannot bypass real pricing — the client refuses to
-  // take the free path unless the caller is a test user or has an elevated
-  // role. RLS remains the ultimate guard; this is defence in depth.
+  // flipping localStorage cannot bypass real pricing — even if they do, the
+  // server-side admin_grant_shop_item RPC rejects the call. is_privileged
+  // starts false while the role query is loading, so the path is fail-closed.
   const freeFlag = typeof window !== 'undefined' && localStorage.getItem('freeShopMode') === 'true';
-  const testMode = isTestUser || (freeFlag && isPrivileged);
+  const testMode = freeFlag && isPrivileged;
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -69,15 +66,18 @@ export const useShopData = (userId: string | undefined) => {
           toast({ title: 'Pick a club first', variant: 'destructive' });
           return;
         }
-        const { error } = await supabase
-          .from('user_inventory')
-          .insert({ user_id: userId, item_id: item.id, club_id: clubId });
-        if (error) {
-          toast({ title: 'Claim failed', description: error.message, variant: 'destructive' });
+        const { data, error } = await supabase.rpc('admin_grant_shop_item', {
+          _target_user: userId,
+          _item_id: item.id,
+          _club_id: clubId,
+        });
+        if (error || data === false) {
+          toast({ title: 'Claim failed', description: error?.message || 'Not authorized', variant: 'destructive' });
           return;
         }
         setOwned((prev) => new Set([...prev, item.id]));
         setLastUnlocked(item);
+        load();
         return;
       }
 
@@ -121,9 +121,12 @@ export const useShopData = (userId: string | undefined) => {
 
   const handleRelock = useCallback(async (item: ShopItem) => {
     if (!userId) return;
-    const { error } = await supabase.from('user_inventory').delete().eq('user_id', userId).eq('item_id', item.id);
-    if (error) {
-      toast({ title: 'Re-lock failed', description: error.message, variant: 'destructive' });
+    const { data, error } = await supabase.rpc('admin_relock_shop_item', {
+      _target_user: userId,
+      _item_id: item.id,
+    });
+    if (error || data === false) {
+      toast({ title: 'Re-lock failed', description: error?.message || 'Not authorized', variant: 'destructive' });
       return;
     }
     toast({ title: '🔒 Re-locked', description: `"${item.name}" removed from inventory` });
