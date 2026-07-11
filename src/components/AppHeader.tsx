@@ -38,12 +38,18 @@ const AppHeader = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const title = club?.name ?? 'Your clubs';
+  const title = onClubsPage ? 'Clubs' : club?.name ?? 'Your clubs';
 
   return (
     <>
       <header className="safe-top sticky top-0 z-20 shrink-0 border-b border-border bg-card/95 backdrop-blur-md">
         <div className="relative mx-auto flex max-w-5xl items-center justify-between gap-2 px-4 py-3">
+          {onClubsPage ? (
+            <div className="flex items-center gap-2 min-w-0">
+              <img src={wormIcon} alt="" className="h-6 w-6 shrink-0" />
+              <h1 className="font-display text-lg sm:text-2xl font-bold text-foreground truncate">{title}</h1>
+            </div>
+          ) : (
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity outline-none">
               <img src={wormIcon} alt="Worm" className="h-6 w-6 shrink-0" />
@@ -74,6 +80,7 @@ const AppHeader = () => {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
           <PointsDisplay />
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {clubId && (
