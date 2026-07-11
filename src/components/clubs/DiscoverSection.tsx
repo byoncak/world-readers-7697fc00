@@ -1,5 +1,5 @@
 import { useMemo, useState, useId } from 'react';
-import { ChevronDown, Search } from 'lucide-react';
+import { ChevronDown, Search, Compass } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -15,7 +15,8 @@ interface Props {
   memberCounts: Record<string, number>;
   myClubIds: Set<string>;
   onJoin: (clubId: string, policy: 'instant' | 'approval', cap: number | null) => void;
-  defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
 }
 
 type SortKey = 'newest' | 'members';
@@ -26,9 +27,15 @@ const DiscoverSection = ({
   memberCounts,
   myClubIds,
   onJoin,
-  defaultOpen = false,
+  open: controlledOpen,
+  onOpenChange,
 }: Props) => {
-  const [open, setOpen] = useState(defaultOpen);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = (v: boolean) => {
+    if (onOpenChange) onOpenChange(v);
+    else setUncontrolledOpen(v);
+  };
   const [query, setQuery] = useState('');
   const [size, setSize] = useState<SizeKey>('any');
   const [sort, setSort] = useState<SortKey>('newest');
@@ -61,19 +68,21 @@ const DiscoverSection = ({
     <section aria-labelledby={`${regionId}-h`} className="space-y-3">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-controls={`${regionId}-body`}
+        data-discover-heading
         className="flex w-full items-center justify-between gap-2 border-b border-border/60 pb-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
       >
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Compass className="h-4 w-4 shrink-0 text-[hsl(var(--terracotta))]" aria-hidden />
           <h2
             id={`${regionId}-h`}
-            className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+            className="font-display text-base font-semibold text-foreground"
           >
             Find a club
           </h2>
-          <span className="text-xs text-muted-foreground">{publicClubs.length} public</span>
+          <span className="text-xs text-muted-foreground shrink-0">{publicClubs.length} public</span>
         </div>
         <ChevronDown
           className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`}

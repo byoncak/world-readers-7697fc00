@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useClub } from '@/contexts/ClubContext';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Plus, ArrowLeft, Info, BookOpenCheck } from 'lucide-react';
+import { Plus, Info, BookOpenCheck, Compass } from 'lucide-react';
 import { toast } from 'sonner';
 import YourClubCard from '@/components/clubs/YourClubCard';
 import DiscoverSection from '@/components/clubs/DiscoverSection';
@@ -24,7 +24,9 @@ const Clubs = () => {
   const inviteCode = searchParams.get('invite');
 
   const lastClubId = typeof window !== 'undefined' ? localStorage.getItem('lastClubId') : null;
-  const lastClub = lastClubId ? memberships.find((m) => m.club_id === lastClubId) : null;
+
+  const [discoverOpen, setDiscoverOpen] = useState(false);
+  const discoverRef = useRef<HTMLDivElement>(null);
 
   const { data: publicClubs = [] } = useQuery({
     queryKey: ['public-clubs'],
@@ -53,11 +55,6 @@ const Clubs = () => {
 
   const myClubIds = useMemo(() => new Set(memberships.map((m) => m.club_id)), [memberships]);
 
-  // Show a clear, honest message when the user lands via ?invite=CODE.
-  // Client-side redemption is not possible: club_invites SELECT is admin-only
-  // (RLS: "Admins view invites"), so we cannot securely look up the club from
-  // a code without new server support. Rather than fail silently or fabricate
-  // a workaround, we surface an explanatory notice and clean the URL.
   useEffect(() => {
     if (!inviteCode) return;
     toast('Ask a club admin to add you', {
@@ -72,6 +69,18 @@ const Clubs = () => {
     const next = new URLSearchParams(searchParams);
     next.delete('invite');
     setSearchParams(next, { replace: true });
+  };
+
+  const focusDiscover = () => {
+    setDiscoverOpen(true);
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    requestAnimationFrame(() => {
+      const el = discoverRef.current;
+      if (!el) return;
+      el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      const heading = el.querySelector<HTMLElement>('[data-discover-heading]');
+      heading?.focus({ preventScroll: true });
+    });
   };
 
   const handleJoin = async (
@@ -106,26 +115,30 @@ const Clubs = () => {
   const hasClubs = memberships.length > 0;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 pb-24 space-y-8 animate-page-in sm:pb-8">
+    <div className="mx-auto w-full max-w-5xl px-4 py-6 pb-24 space-y-8 animate-page-in sm:pb-8">
       {/* Header */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
           <h1 className="font-display text-3xl font-bold leading-tight sm:text-4xl">Clubs</h1>
           <p className="mt-1 font-serif text-sm italic text-muted-foreground">
             A quiet place to keep your reading crews.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {lastClub && (
-            <Button asChild variant="ghost" size="sm">
-              <Link to={`/c/${lastClub.club_id}`}>
-                <ArrowLeft className="mr-1 h-4 w-4" />
-                Back to {lastClub.club.name}
-              </Link>
-            </Button>
-          )}
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-1 h-4 w-4" /> New club
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+          <Button
+            variant="secondary"
+            onClick={focusDiscover}
+            className="min-h-[44px] min-w-0 w-full sm:w-auto"
+          >
+            <Compass className="mr-1.5 h-4 w-4" aria-hidden />
+            <span className="truncate">Find a club</span>
+          </Button>
+          <Button
+            onClick={() => setCreateOpen(true)}
+            className="min-h-[44px] min-w-0 w-full sm:w-auto"
+          >
+            <Plus className="mr-1.5 h-4 w-4" aria-hidden />
+            <span className="truncate">New club</span>
           </Button>
         </div>
       </header>
@@ -134,29 +147,31 @@ const Clubs = () => {
       {inviteCode && (
         <Card
           role="status"
-          className="flex items-start gap-3 border-[hsl(var(--soft-gold)/0.5)] bg-[hsl(var(--soft-gold)/0.12)] p-4"
+          className="flex flex-wrap items-start gap-3 border-[hsl(var(--soft-gold)/0.5)] bg-[hsl(var(--soft-gold)/0.12)] p-4"
         >
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(var(--warm-brown))]" aria-hidden />
           <div className="min-w-0 flex-1 text-sm">
             <p className="font-medium">You opened an invite link.</p>
-            <p className="mt-0.5 text-muted-foreground">
+            <p className="mt-0.5 break-words text-muted-foreground">
               Invite codes are redeemed by a club admin. Share this code with them and they'll add
-              you: <code className="rounded bg-card px-1.5 py-0.5">{inviteCode}</code>
+              you: <code className="rounded bg-card px-1.5 py-0.5 break-all">{inviteCode}</code>
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              navigator.clipboard?.writeText(inviteCode);
-              toast.success('Code copied');
-            }}
-          >
-            Copy
-          </Button>
-          <Button variant="ghost" size="sm" onClick={clearInvite}>
-            Dismiss
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                navigator.clipboard?.writeText(inviteCode);
+                toast.success('Code copied');
+              }}
+            >
+              Copy
+            </Button>
+            <Button variant="ghost" size="sm" onClick={clearInvite}>
+              Dismiss
+            </Button>
+          </div>
         </Card>
       )}
 
@@ -189,7 +204,7 @@ const Clubs = () => {
         ) : hasClubs ? (
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {memberships.map((m) => (
-              <li key={m.club_id}>
+              <li key={m.club_id} className="min-w-0">
                 <YourClubCard
                   membership={m}
                   memberCount={memberCounts[m.club_id]}
@@ -197,7 +212,7 @@ const Clubs = () => {
                 />
               </li>
             ))}
-            <li>
+            <li className="min-w-0">
               <button
                 type="button"
                 onClick={() => setCreateOpen(true)}
@@ -217,13 +232,8 @@ const Clubs = () => {
                 Find a public club below, or start your own reading crew.
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  document.getElementById('discover-anchor')?.scrollIntoView({ behavior: 'smooth' })
-                }
-              >
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button variant="secondary" onClick={focusDiscover}>
                 Browse public clubs
               </Button>
               <Button onClick={() => setCreateOpen(true)}>
@@ -236,14 +246,16 @@ const Clubs = () => {
 
       <PendingRequestsSection />
 
-      <div id="discover-anchor" />
-      <DiscoverSection
-        publicClubs={publicClubs}
-        memberCounts={memberCounts}
-        myClubIds={myClubIds}
-        onJoin={handleJoin}
-        defaultOpen={!hasClubs}
-      />
+      <div ref={discoverRef}>
+        <DiscoverSection
+          publicClubs={publicClubs}
+          memberCounts={memberCounts}
+          myClubIds={myClubIds}
+          onJoin={handleJoin}
+          open={discoverOpen}
+          onOpenChange={setDiscoverOpen}
+        />
+      </div>
 
       <CommunityPulseStrip />
 

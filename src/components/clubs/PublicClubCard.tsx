@@ -14,8 +14,8 @@ const PublicClubCard = ({ club: c, memberCount, joined, onJoin }: Props) => {
   const cta = joined ? 'Open' : full ? 'Full' : c.join_policy === 'instant' ? 'Join' : 'Request';
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/60 px-4 py-3 transition-colors hover:bg-card">
-      <div className="min-w-0 flex-1">
+    <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/60 px-4 py-3 transition-colors hover:bg-card">
+      <div className="min-w-0 flex-1 overflow-hidden">
         <div className="flex items-center gap-1.5">
           {c.visibility === 'private' ? (
             <Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
