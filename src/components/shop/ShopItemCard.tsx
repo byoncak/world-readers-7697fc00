@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Check, Lock, Sparkles } from 'lucide-react';
+import { Check, Lock, Sparkles as SparkleIcon } from 'lucide-react';
 import ShopPreview from './ShopPreview';
 import HoldToUnlockButton from './HoldToUnlockButton';
 import type { ShopItem } from './ShopPreview';
