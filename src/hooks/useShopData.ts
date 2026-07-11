@@ -26,13 +26,12 @@ export const useShopData = (userId: string | undefined) => {
   // React setState boundary (state updates are batched; a ref is synchronous).
   const purchaseLock = useRef(false);
   const equipLock = useRef<Set<string>>(new Set());
-  const isTestUser = user?.email === 'testuser@bookclub.local';
   // Free-shop mode is a privileged-only testing affordance. Regular users
-  // flipping localStorage cannot bypass real pricing — the client refuses to
-  // take the free path unless the caller is a test user or has an elevated
-  // role. RLS remains the ultimate guard; this is defence in depth.
+  // flipping localStorage cannot bypass real pricing — even if they do, the
+  // server-side admin_grant_shop_item RPC rejects the call. is_privileged
+  // starts false while the role query is loading, so the path is fail-closed.
   const freeFlag = typeof window !== 'undefined' && localStorage.getItem('freeShopMode') === 'true';
-  const testMode = isTestUser || (freeFlag && isPrivileged);
+  const testMode = freeFlag && isPrivileged;
 
   const load = useCallback(async () => {
     if (!userId) return;
