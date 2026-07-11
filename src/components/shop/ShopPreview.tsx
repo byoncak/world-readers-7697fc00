@@ -50,7 +50,7 @@ const FramePreview = ({ asset_data }: { asset_data: Record<string, any> }) => {
       <div className={PREVIEW_WRAPPER}>
         <div className={PREVIEW_BOX}>
           <div style={{ transform: 'scale(1.25)', transformOrigin: 'center' }}>
-            <ElectricBorder size="md" preview asset_data-key={asset_data.variants?.[0]?.key} variantKey={asset_data.variants?.[0]?.key}>
+            <ElectricBorder size="md" preview variantKey={asset_data.variants?.[0]?.key}>
               <div className="h-full w-full rounded-full bg-muted flex items-center justify-center">
                 <User className="h-7 w-7 text-muted-foreground" />
               </div>
