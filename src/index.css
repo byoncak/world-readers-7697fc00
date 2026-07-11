@@ -509,6 +509,12 @@
   .gold-name-pulse {
     animation: gold-glow 2.5s ease-in-out infinite;
   }
+
+  /* Shop premium sheen — background-position sweep only, no layout thrash. */
+  @keyframes shop-sheen {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -50% 0; }
+  }
   .post-it {
     @apply rounded-lg p-4 shadow-sm;
     background: hsl(var(--peach));
@@ -772,6 +778,10 @@
   }
   .sparkle-svg {
     animation: none;
+  }
+  /* Freeze the shop sheen for reduced-motion users; the gradient still reads as material. */
+  [style*="shop-sheen"] {
+    animation: none !important;
   }
 }
 
