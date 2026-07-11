@@ -43,9 +43,16 @@ export const useShopData = (userId: string | undefined) => {
 
   const purchaseItem = useCallback(async (item: ShopItem) => {
     if (!userId) return;
+    if (purchasing) return;
+    if (owned.has(item.id)) return;
     setPurchasing(true);
 
     if (testMode) {
+      if (!clubId) {
+        setPurchasing(false);
+        toast({ title: 'Pick a club first', variant: 'destructive' });
+        return;
+      }
       const { error } = await supabase.from('user_inventory').insert({ user_id: userId, item_id: item.id, club_id: clubId });
       setPurchasing(false);
       if (error) {
@@ -78,7 +85,7 @@ export const useShopData = (userId: string | undefined) => {
     setOwned(prev => new Set([...prev, item.id]));
     setLastUnlocked(item);
     refetchPoints();
-  }, [userId, testMode, toast, refetchPoints, clubId]);
+  }, [userId, testMode, toast, refetchPoints, clubId, purchasing, owned]);
 
   const handlePurchase = useCallback(async () => {
     if (!buying) return;

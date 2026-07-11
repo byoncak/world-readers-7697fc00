@@ -36,7 +36,7 @@ type CategoryKey = typeof CATEGORIES[number]['key'];
 
 const Shop = () => {
   const { user } = useAuth();
-  const { items, loading, error, refetch, owned, points, testMode, handleRelock, purchaseItem, lastUnlocked, clearLastUnlocked } = useShopData(user?.id);
+  const { items, loading, error, refetch, owned, points, testMode, purchasing, handleRelock, purchaseItem, lastUnlocked, clearLastUnlocked } = useShopData(user?.id);
   const [showHelp, setShowHelp] = useState(false);
   const [tab, setTab] = useState<CategoryKey>('avatar_frame');
   const tabsRef = useRef<(HTMLButtonElement | null)[]>([]);
@@ -138,6 +138,7 @@ const Shop = () => {
                   canAfford={points >= item.price}
                   points={points}
                   testMode={testMode}
+                  purchasing={purchasing}
                   stagger={Math.min(i, 7) * 55}
                   onBuy={purchaseItem}
                   onRelock={handleRelock}
