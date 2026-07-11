@@ -97,7 +97,7 @@ const AppHeader = () => {
               </>
             )}
             <NotificationBell />
-            {isPrivileged && clubId && (
+            {canOpenAdmin && clubId && (
               <Link to={clubPath('/admin')} className="cozy-btn-ghost flex items-center gap-1 sm:gap-1.5 px-2 sm:px-5 text-sm">
                 <Shield className="h-4 w-4" />
                 <span className="hidden sm:inline">Admin</span>
