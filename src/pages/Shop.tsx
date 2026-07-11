@@ -181,6 +181,7 @@ const Shop = () => {
         userId={user?.id}
         open={!!lastUnlocked}
         onClose={clearLastUnlocked}
+        onEquipped={refetch}
       />
     </main>
   );
