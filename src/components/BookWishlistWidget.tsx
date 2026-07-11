@@ -31,7 +31,8 @@ interface Suggestion {
 
 const BookWishlistWidget = () => {
   const { user } = useAuth();
-  const { isPrivileged } = useRole();
+  const { isPrivileged: globalPriv, canManageCurrentClub } = useRole();
+  const isPrivileged = globalPriv || canManageCurrentClub;
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [currentBookId, setCurrentBookId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
