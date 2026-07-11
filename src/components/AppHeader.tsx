@@ -17,6 +17,8 @@ const AppHeader = () => {
   const { user } = useAuth();
   const { isPrivileged } = useRole();
   const { club, clubId, memberships, isClubAdmin, clubPath } = useClub();
+  const { pathname } = useLocation();
+  const onClubsPage = pathname === '/clubs';
 
   useEffect(() => {
     if (clubId) localStorage.setItem('lastClubId', clubId);
