@@ -124,9 +124,12 @@ export const useShopData = (userId: string | undefined) => {
 
   const handleRelock = useCallback(async (item: ShopItem) => {
     if (!userId) return;
-    const { error } = await supabase.from('user_inventory').delete().eq('user_id', userId).eq('item_id', item.id);
-    if (error) {
-      toast({ title: 'Re-lock failed', description: error.message, variant: 'destructive' });
+    const { data, error } = await supabase.rpc('admin_relock_shop_item', {
+      _target_user: userId,
+      _item_id: item.id,
+    });
+    if (error || data === false) {
+      toast({ title: 'Re-lock failed', description: error?.message || 'Not authorized', variant: 'destructive' });
       return;
     }
     toast({ title: '🔒 Re-locked', description: `"${item.name}" removed from inventory` });
