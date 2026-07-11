@@ -36,7 +36,7 @@ type CategoryKey = typeof CATEGORIES[number]['key'];
 
 const Shop = () => {
   const { user } = useAuth();
-  const { items, loading, error, refetch, owned, points, testMode, purchasing, handleRelock, purchaseItem, lastUnlocked, clearLastUnlocked } = useShopData(user?.id);
+  const { items, loading, error, refetch, owned, equipped, points, testMode, purchasing, handleRelock, handleEquip, purchaseItem, lastUnlocked, clearLastUnlocked } = useShopData(user?.id);
   const [showHelp, setShowHelp] = useState(false);
   const [tab, setTab] = useState<CategoryKey>('avatar_frame');
   const tabsRef = useRef<(HTMLButtonElement | null)[]>([]);
@@ -135,6 +135,7 @@ const Shop = () => {
                   key={item.id}
                   item={item}
                   isOwned={owned.has(item.id)}
+                  isEquipped={equipped.has(item.id)}
                   canAfford={points >= item.price}
                   points={points}
                   testMode={testMode}
@@ -142,6 +143,7 @@ const Shop = () => {
                   stagger={Math.min(i, 7) * 55}
                   onBuy={purchaseItem}
                   onRelock={handleRelock}
+                  onEquip={handleEquip}
                 />
               ))}
             </div>

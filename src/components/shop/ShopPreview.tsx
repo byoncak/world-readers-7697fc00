@@ -160,41 +160,107 @@ const BadgePreview = ({ asset_data }: { asset_data: Record<string, any> }) => {
   );
 };
 
-const ShopPreview = ({ item }: { item: ShopItem }) => {
+type Tier = 'common' | 'rare' | 'epic' | 'legendary';
+
+const isPremium = (tier?: Tier) => tier === 'epic' || tier === 'legendary';
+
+/** Metallic sheen sweep that reads as "premium material" without being loud.
+ *  Uses transform/opacity only. Respects prefers-reduced-motion (via
+ *  motion-safe utilities in the parent). */
+const PremiumSheen = () => (
+  <span
+    aria-hidden="true"
+    className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
+    style={{
+      background:
+        'linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.35) 50%, transparent 70%)',
+      backgroundSize: '250% 100%',
+      mixBlendMode: 'overlay',
+      animation: 'shop-sheen 4.5s ease-in-out infinite',
+    }}
+  />
+);
+
+const ShopPreview = ({ item, tier }: { item: ShopItem; tier?: Tier }) => {
+  const premium = isPremium(tier);
   switch (item.category) {
     case 'avatar_frame':
       return <FramePreview asset_data={item.asset_data} />;
     case 'badge':
       return <BadgePreview asset_data={item.asset_data} />;
-    case 'title':
+    case 'title': {
+      // Legendary titles get a warm gold-gradient text treatment even when
+      // the raw stored color is understated — makes the top-tier title feel
+      // like a plaque, not italicized muted text.
+      const color = item.asset_data.color as string | undefined;
+      const legendary = tier === 'legendary';
+      const titleStyle: React.CSSProperties = legendary
+        ? {
+            backgroundImage:
+              'linear-gradient(90deg, hsl(var(--warm-brown)), hsl(var(--soft-gold)), hsl(var(--warm-brown)))',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            color: 'transparent',
+            textShadow: '0 0 8px hsl(var(--soft-gold) / 0.35)',
+            fontWeight: 700,
+          }
+        : color
+          ? { color }
+          : {};
       return (
         <div className="flex flex-col items-center gap-1 mb-3 py-2">
           <span className="font-display font-bold text-sm text-foreground">Your Name</span>
           <span
-            className={`text-xs italic ${item.asset_data.color ? '' : 'text-muted-foreground'}`}
-            style={item.asset_data.color ? { color: item.asset_data.color } : undefined}
+            className={`text-xs italic ${!legendary && !color ? 'text-muted-foreground' : ''}`}
+            style={titleStyle}
           >
             ~ {item.asset_data.title} ~
           </span>
         </div>
       );
-    case 'name_flair':
+    }
+    case 'name_flair': {
+      // Golden name (250) already has `gold-name-pulse` via css_class — apply
+      // it here in the preview too so shoppers see the actual equipped effect.
+      const css = item.asset_data.css_class as string | undefined;
+      const baseStyle = item.asset_data.color_style
+        ? parseInlineStyle(item.asset_data.color_style)
+        : undefined;
+      const style: React.CSSProperties | undefined =
+        css === 'gold-name-pulse'
+          ? {
+              ...baseStyle,
+              textShadow:
+                '0 0 8px rgba(245, 158, 11, 0.5), 0 0 16px rgba(245, 158, 11, 0.25)',
+            }
+          : baseStyle;
       return (
         <div className="flex flex-col items-center gap-1 mb-3 py-2">
-          <span
-            className="font-display font-bold text-lg"
-            style={item.asset_data.color_style ? parseInlineStyle(item.asset_data.color_style) : undefined}
-          >
+          <span className={`font-display font-bold text-lg ${css ?? ''}`} style={style}>
             Your Name
           </span>
         </div>
       );
+    }
     case 'progress_bar':
       return (
-        <div className="flex flex-col items-center gap-2 mb-3 py-2">
+        <div className="relative flex flex-col items-center gap-2 mb-3 py-2 w-full">
           <div className={`progress-bar-watercolor ${item.asset_data.bar_class || ''} w-full`}>
             <div className="fill" style={{ width: '65%' }} />
           </div>
+          {premium && (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-1/2 h-4 -translate-y-1/2 rounded-full motion-safe:animate-[shop-sheen_5s_ease-in-out_infinite]"
+              style={{
+                background:
+                  'linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.35) 50%, transparent 60%)',
+                backgroundSize: '250% 100%',
+                mixBlendMode: 'overlay',
+              }}
+            />
+          )}
         </div>
       );
     case 'theme': {
@@ -207,14 +273,11 @@ const ShopPreview = ({ item }: { item: ShopItem }) => {
         <div className="flex flex-col items-center gap-1.5 mb-3 py-1">
           {/* Miniature app "room" rendered in the theme's own palette */}
           <div
-            className="w-full max-w-[200px] rounded-xl border p-2.5 shadow-inner"
+            className="relative w-full max-w-[200px] overflow-hidden rounded-xl border p-2.5 shadow-inner"
             style={{ backgroundColor: palette.bg, borderColor: `${palette.primary}33` }}
             aria-hidden
           >
-            <div
-              className="rounded-lg p-2"
-              style={{ backgroundColor: palette.card }}
-            >
+            <div className="rounded-lg p-2" style={{ backgroundColor: palette.card }}>
               <div className="h-2 w-16 rounded-full mb-1.5" style={{ backgroundColor: palette.text, opacity: 0.9 }} />
               <div className="h-1.5 w-24 rounded-full mb-2" style={{ backgroundColor: palette.muted, opacity: 0.6 }} />
               <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: `${palette.muted}44` }}>
@@ -225,6 +288,7 @@ const ShopPreview = ({ item }: { item: ShopItem }) => {
                 <div className="h-3.5 w-3.5 rounded-full" style={{ backgroundColor: palette.accent }} />
               </div>
             </div>
+            {premium && <PremiumSheen />}
           </div>
           {palette.mood && (
             <p className="text-[11px] italic text-muted-foreground font-serif text-center">{palette.mood}</p>
@@ -239,3 +303,4 @@ const ShopPreview = ({ item }: { item: ShopItem }) => {
 
 export default ShopPreview;
 export type { ShopItem };
+

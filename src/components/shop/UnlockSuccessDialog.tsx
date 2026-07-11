@@ -2,10 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
-import { invalidateFrameCache } from '@/hooks/useEquippedFrame';
-import { invalidateThemeCache } from '@/hooks/useEquippedTheme';
-import { invalidateCosmeticsCache } from '@/hooks/useEquippedCosmetics';
+import { equipCosmetic } from '@/lib/equipCosmetic';
 import { toast } from 'sonner';
 import ShopPreview, { type ShopItem } from '@/components/shop/ShopPreview';
 import Sparkles from '@/components/Sparkles';
@@ -48,42 +45,17 @@ const UnlockSuccessDialog = ({ item, userId, open, onClose }: Props) => {
   const equipNow = async () => {
     if (!userId || equipping) return;
     setEquipping(true);
-
-    // Unequip anything else in this category, then equip the new item.
-    const { data: rows } = await supabase
-      .from('user_inventory')
-      .select('id, item_id, equipped, shop_items(category)')
-      .eq('user_id', userId);
-
-    interface InvRow { id: string; item_id: string; equipped: boolean; shop_items: { category: string } | null }
-    const inventory = (rows ?? []) as unknown as InvRow[];
-    const mine = inventory.find((r) => r.item_id === item.id);
-    if (!mine) {
+    try {
+      const { ok, error } = await equipCosmetic(userId, item.id, item.category);
+      if (!ok) {
+        toast.error('Failed to equip', { description: error });
+        return;
+      }
+      setEquipped(true);
+      toast.success(`Equipped "${item.name}"! ✨`);
+    } finally {
       setEquipping(false);
-      toast.error("Couldn't find that item in your inventory");
-      return;
     }
-
-    const sameCategoryEquipped = inventory.filter(
-      (r) => r.shop_items?.category === item.category && r.equipped && r.id !== mine.id
-    );
-    for (const other of sameCategoryEquipped) {
-      await supabase.from('user_inventory').update({ equipped: false }).eq('id', other.id);
-    }
-    const { error } = await supabase.from('user_inventory').update({ equipped: true }).eq('id', mine.id);
-    setEquipping(false);
-
-    if (error) {
-      toast.error('Failed to equip', { description: error.message });
-      return;
-    }
-
-    if (item.category === 'avatar_frame') invalidateFrameCache(userId);
-    if (item.category === 'theme') invalidateThemeCache();
-    invalidateCosmeticsCache(userId);
-
-    setEquipped(true);
-    toast.success(`Equipped "${item.name}"! ✨`);
   };
 
   const goToInventory = () => {
