@@ -35,29 +35,44 @@ interface ShopItemCardProps {
 
 const ShopItemCard = memo(({ item, isOwned, canAfford, points, testMode, purchasing = false, stagger = 0, onBuy, onRelock }: ShopItemCardProps) => {
   const shortfall = Math.max(0, item.price - points);
+  const tier = tierFor(item.price);
+  const meta = TIER_META[tier];
 
   return (
     <div
-      className={`animate-card-in group flex flex-col rounded-2xl border bg-card shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${
-        isOwned ? 'border-secondary/70' : 'border-border'
+      className={`animate-card-in group relative flex flex-col rounded-2xl border bg-card shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${
+        isOwned ? 'border-secondary/70' : meta.ring
       }`}
       style={{ '--stagger': `${stagger}ms` } as React.CSSProperties}
     >
       {/* Pedestal: the item is the hero */}
-      <div className="relative m-3 mb-0 flex min-h-[104px] items-center justify-center rounded-xl bg-muted/40 px-3 transition-colors duration-300 group-hover:bg-muted/60">
+      <div className={`relative m-3 mb-0 flex min-h-[104px] items-center justify-center overflow-hidden rounded-xl ${meta.pedestal} px-3 transition-colors duration-300`}>
+        {meta.showSparkle && (
+          <Sparkles
+            className={`pointer-events-none absolute right-2 top-2 h-3.5 w-3.5 ${tier === 'legendary' ? 'text-[hsl(var(--soft-gold))]' : 'text-[hsl(var(--soft-gold)/0.75)]'} motion-safe:animate-pulse`}
+            aria-hidden="true"
+          />
+        )}
         <div className="[&>div]:mb-0 [&>div]:py-3 w-full flex justify-center">
           <ShopPreview item={item} />
         </div>
         {isOwned && (
           <Badge
             variant="secondary"
-            className="absolute right-2 top-2 rounded-full px-2.5 py-0.5 text-[11px] font-semibold font-body shadow-sm"
+            className="absolute left-2 top-2 rounded-full px-2.5 py-0.5 text-[11px] font-semibold font-body shadow-sm"
           >
-            <Check className="h-3 w-3 mr-0.5" />
+            <Check className="h-3 w-3 mr-0.5" aria-hidden="true" />
             Owned
           </Badge>
         )}
+        <span
+          className={`absolute bottom-2 left-2 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${meta.badge}`}
+          aria-label={`Rarity: ${meta.label}`}
+        >
+          {meta.label}
+        </span>
       </div>
+
 
       <div className="flex flex-1 flex-col p-4 pt-3">
         <h3 className="font-display text-base font-bold not-italic text-foreground leading-snug">{item.name}</h3>
