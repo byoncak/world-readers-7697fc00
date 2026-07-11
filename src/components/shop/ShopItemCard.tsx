@@ -48,7 +48,7 @@ const ShopItemCard = memo(({ item, isOwned, canAfford, points, testMode, purchas
       {/* Pedestal: the item is the hero */}
       <div className={`relative m-3 mb-0 flex min-h-[104px] items-center justify-center overflow-hidden rounded-xl ${meta.pedestal} px-3 transition-colors duration-300`}>
         {meta.showSparkle && (
-          <Sparkles
+          <SparkleIcon
             className={`pointer-events-none absolute right-2 top-2 h-3.5 w-3.5 ${tier === 'legendary' ? 'text-[hsl(var(--soft-gold))]' : 'text-[hsl(var(--soft-gold)/0.75)]'} motion-safe:animate-pulse`}
             aria-hidden="true"
           />
