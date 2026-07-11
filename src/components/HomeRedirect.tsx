@@ -1,9 +1,11 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { useClub } from '@/contexts/ClubContext';
 
 /** Sends users from "/" to their first club (or the Clubs landing page). */
 const HomeRedirect = () => {
   const { memberships, isLoadingMemberships } = useClub();
+  const [searchParams] = useSearchParams();
+  const inviteCode = searchParams.get('invite');
 
   if (isLoadingMemberships) {
     return (
@@ -11,6 +13,12 @@ const HomeRedirect = () => {
         <div className="book"><div/><div/><div/><div/><div/></div>
       </div>
     );
+  }
+
+  // Invite links always route through the Clubs hub so users see the
+  // explanatory banner and the code stays visible.
+  if (inviteCode) {
+    return <Navigate to={`/clubs?invite=${encodeURIComponent(inviteCode)}`} replace />;
   }
 
   if (memberships.length === 0) {
