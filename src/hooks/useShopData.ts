@@ -69,15 +69,18 @@ export const useShopData = (userId: string | undefined) => {
           toast({ title: 'Pick a club first', variant: 'destructive' });
           return;
         }
-        const { error } = await supabase
-          .from('user_inventory')
-          .insert({ user_id: userId, item_id: item.id, club_id: clubId });
-        if (error) {
-          toast({ title: 'Claim failed', description: error.message, variant: 'destructive' });
+        const { data, error } = await supabase.rpc('admin_grant_shop_item', {
+          _target_user: userId,
+          _item_id: item.id,
+          _club_id: clubId,
+        });
+        if (error || data === false) {
+          toast({ title: 'Claim failed', description: error?.message || 'Not authorized', variant: 'destructive' });
           return;
         }
         setOwned((prev) => new Set([...prev, item.id]));
         setLastUnlocked(item);
+        load();
         return;
       }
 
