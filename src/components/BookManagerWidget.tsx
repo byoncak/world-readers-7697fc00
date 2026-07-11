@@ -28,7 +28,8 @@ interface Book {
 }
 
 const BookManagerWidget = () => {
-  const { isAdmin } = useRole();
+  const { canManageCurrentClub } = useRole();
+  const isAdmin = canManageCurrentClub;
   const [books, setBooks] = useState<Book[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmDeleteStep2, setConfirmDeleteStep2] = useState(false);

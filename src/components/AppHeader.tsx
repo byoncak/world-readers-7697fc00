@@ -15,7 +15,8 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 
 const AppHeader = () => {
   const { user } = useAuth();
-  const { isPrivileged } = useRole();
+  const { isPrivileged, canManageCurrentClub } = useRole();
+  const canOpenAdmin = isPrivileged || canManageCurrentClub;
   const { club, clubId, memberships, isClubAdmin, clubPath } = useClub();
   const { pathname } = useLocation();
   const onClubsPage = pathname === '/clubs';
@@ -96,7 +97,7 @@ const AppHeader = () => {
               </>
             )}
             <NotificationBell />
-            {isPrivileged && clubId && (
+            {canOpenAdmin && clubId && (
               <Link to={clubPath('/admin')} className="cozy-btn-ghost flex items-center gap-1 sm:gap-1.5 px-2 sm:px-5 text-sm">
                 <Shield className="h-4 w-4" />
                 <span className="hidden sm:inline">Admin</span>
