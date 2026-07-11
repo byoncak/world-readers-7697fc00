@@ -54,7 +54,8 @@ export const ClubProvider = ({ children }: { children: ReactNode }) => {
         .map((m) => ({ club_id: m.club_id, role: m.role, club: m.club })) as ClubMembership[];
     },
     enabled: !!user,
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   const value = useMemo<ClubContextValue>(() => {
