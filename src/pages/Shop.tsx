@@ -138,6 +138,7 @@ const Shop = () => {
                   canAfford={points >= item.price}
                   points={points}
                   testMode={testMode}
+                  purchasing={purchasing}
                   stagger={Math.min(i, 7) * 55}
                   onBuy={purchaseItem}
                   onRelock={handleRelock}
