@@ -1,7 +1,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { Navigate } from 'react-router-dom';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   BookOpen,
   Calendar,
@@ -172,11 +172,9 @@ const Admin = () => {
   ];
 
   const visible = groups.filter(g => g.show);
-  const scopeCounts = useMemo(() => {
-    const c: Record<Scope, number> = { club: 0, community: 0, system: 0 };
-    for (const g of visible) c[g.scope]++;
-    return c;
-  }, [visible]);
+  const scopeCounts: Record<Scope, number> = { club: 0, community: 0, system: 0 };
+  for (const g of visible) scopeCounts[g.scope]++;
+
 
   // If the active scope is empty for this user, jump to the first with content.
   const effectiveScope: Scope = scopeCounts[activeScope] > 0
