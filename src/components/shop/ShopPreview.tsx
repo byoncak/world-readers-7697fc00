@@ -50,7 +50,7 @@ const FramePreview = ({ asset_data }: { asset_data: Record<string, any> }) => {
       <div className={PREVIEW_WRAPPER}>
         <div className={PREVIEW_BOX}>
           <div style={{ transform: 'scale(1.25)', transformOrigin: 'center' }}>
-            <ElectricBorder size="md">
+            <ElectricBorder size="md" preview variantKey={asset_data.variants?.[0]?.key}>
               <div className="h-full w-full rounded-full bg-muted flex items-center justify-center">
                 <User className="h-7 w-7 text-muted-foreground" />
               </div>
@@ -66,7 +66,7 @@ const FramePreview = ({ asset_data }: { asset_data: Record<string, any> }) => {
       <div className={PREVIEW_WRAPPER}>
         <div className={PREVIEW_BOX}>
           <div style={{ transform: 'scale(1.25)', transformOrigin: 'center' }}>
-            <ChromeBorder size="md">
+            <ChromeBorder size="md" preview>
               <div className="h-full w-full rounded-full bg-muted flex items-center justify-center">
                 <User className="h-7 w-7 text-muted-foreground" />
               </div>
