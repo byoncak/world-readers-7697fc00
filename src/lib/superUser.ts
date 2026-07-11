@@ -1,8 +1,9 @@
 /**
- * The single super-user for this deployment.
- * Only this account sees developer testing tools regardless of any other role.
+ * @deprecated Use the `useIsSuperUser()` hook (which calls the server-side
+ * `is_super_user` RPC) instead of any client-side ID comparison.
+ *
+ * The old hard-coded UUID was a client-only gate with no server enforcement.
+ * It has been removed intentionally. The canonical super user is now bound
+ * server-side to a single verified email address via `super_user_config`.
  */
-export const SUPER_USER_ID = '2be7250e-e9ac-4e7e-aede-83bdb073acb8';
-
-export const isSuperUser = (userId: string | null | undefined): boolean =>
-  !!userId && userId === SUPER_USER_ID;
+export const isSuperUser = (_userId: string | null | undefined): boolean => false;

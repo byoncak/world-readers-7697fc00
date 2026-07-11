@@ -49,6 +49,36 @@ export type Database = {
           },
         ]
       }
+      admin_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          target_id: string | null
+          target_kind: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          target_id?: string | null
+          target_kind?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          target_id?: string | null
+          target_kind?: string | null
+        }
+        Relationships: []
+      }
       announcement_reads: {
         Row: {
           announcement_id: string
@@ -1326,6 +1356,33 @@ export type Database = {
           },
         ]
       }
+      super_user_config: {
+        Row: {
+          bound_at: string | null
+          bound_user_id: string | null
+          created_at: string
+          id: number
+          target_email: string
+          updated_at: string
+        }
+        Insert: {
+          bound_at?: string | null
+          bound_user_id?: string | null
+          created_at?: string
+          id?: number
+          target_email: string
+          updated_at?: string
+        }
+        Update: {
+          bound_at?: string | null
+          bound_user_id?: string | null
+          created_at?: string
+          id?: number
+          target_email?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_key: string
@@ -1546,6 +1603,15 @@ export type Database = {
         Args: { _item_id: string; _target_user: string }
         Returns: boolean
       }
+      audit_admin_action: {
+        Args: {
+          _action: string
+          _metadata?: Json
+          _target_id?: string
+          _target_kind?: string
+        }
+        Returns: undefined
+      }
       award_points: {
         Args: {
           _action_type: string
@@ -1613,10 +1679,12 @@ export type Database = {
         Returns: boolean
       }
       is_privileged: { Args: { _user_id: string }; Returns: boolean }
+      is_super_user: { Args: { _user_id: string }; Returns: boolean }
       purchase_shop_item: {
         Args: { _club_id: string; _item_id: string; _user_id: string }
         Returns: boolean
       }
+      set_maintenance_mode: { Args: { _enabled: boolean }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "moderator" | "member"

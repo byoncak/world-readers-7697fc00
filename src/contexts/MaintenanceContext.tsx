@@ -57,16 +57,14 @@ export const MaintenanceProvider = ({ children }: { children: ReactNode }) => {
   }, [enabled]);
 
   const setMaintenance = useCallback(async (next: boolean) => {
-    const { error } = await supabase
-      .from('app_settings')
-      .upsert({
-        key: 'maintenance_mode',
-        value: { enabled: next },
-        updated_at: new Date().toISOString(),
-      });
-
-    if (!error) setEnabled(next);
-    return { error: error as Error | null };
+    // Server-authoritative: the RPC checks is_super_user(auth.uid()) and
+    // returns false for anyone else. RLS on app_settings also rejects direct
+    // writes.
+    const { data, error } = await supabase.rpc('set_maintenance_mode', { _enabled: next });
+    if (error) return { error: error as unknown as Error };
+    if (data !== true) return { error: new Error('Only the super user can change maintenance mode.') };
+    setEnabled(next);
+    return { error: null };
   }, []);
 
   const enterApp = useCallback(() => setBypass(true), []);

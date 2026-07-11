@@ -10,7 +10,7 @@ import type { ShopItem } from '@/components/shop/ShopPreview';
 export const useShopData = (userId: string | undefined) => {
   const { points, refetch: refetchPoints } = usePoints();
   const { clubId } = useClub();
-  const { isPrivileged } = useRole();
+  const { isSuperUser } = useRole();
   const { toast } = useToast();
   const [items, setItems] = useState<ShopItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,16 +20,13 @@ export const useShopData = (userId: string | undefined) => {
   const [buying, setBuying] = useState<ShopItem | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [lastUnlocked, setLastUnlocked] = useState<ShopItem | null>(null);
-  // Ref-level mutation lock so rapid pointer events can't slip past the
-  // React setState boundary (state updates are batched; a ref is synchronous).
   const purchaseLock = useRef(false);
   const equipLock = useRef<Set<string>>(new Set());
-  // Free-shop mode is a privileged-only testing affordance. Regular users
-  // flipping localStorage cannot bypass real pricing — even if they do, the
-  // server-side admin_grant_shop_item RPC rejects the call. is_privileged
-  // starts false while the role query is loading, so the path is fail-closed.
+  // Free-shop mode is a super-user-only testing affordance. Even if a
+  // non-super-user flips the localStorage flag, `admin_grant_shop_item` and
+  // `admin_relock_shop_item` reject with is_super_user() server-side.
   const freeFlag = typeof window !== 'undefined' && localStorage.getItem('freeShopMode') === 'true';
-  const testMode = freeFlag && isPrivileged;
+  const testMode = freeFlag && isSuperUser;
 
   const load = useCallback(async () => {
     if (!userId) return;
