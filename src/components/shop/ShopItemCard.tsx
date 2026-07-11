@@ -73,7 +73,7 @@ const ShopItemCard = memo(({ item, isOwned, canAfford, points, testMode, purchas
                   {shortfall} more 🍎 to go
                 </span>
               ) : (
-                <HoldToUnlockButton price={item.price} canAfford={canAfford} testMode={testMode} onUnlock={() => onBuy(item)} />
+                <HoldToUnlockButton price={item.price} canAfford={canAfford} testMode={testMode} disabled={purchasing} onUnlock={() => onBuy(item)} />
               ))}
           </div>
         </div>
