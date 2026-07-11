@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { usePoints } from '@/hooks/usePoints';
 import { useClub } from '@/contexts/ClubContext';
-import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { equipCosmetic } from '@/lib/equipCosmetic';
 import type { ShopItem } from '@/components/shop/ShopPreview';
@@ -11,7 +10,6 @@ import type { ShopItem } from '@/components/shop/ShopPreview';
 export const useShopData = (userId: string | undefined) => {
   const { points, refetch: refetchPoints } = usePoints();
   const { clubId } = useClub();
-  const { user } = useAuth();
   const { isPrivileged } = useRole();
   const { toast } = useToast();
   const [items, setItems] = useState<ShopItem[]>([]);
