@@ -1,35 +1,30 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useClub } from '@/contexts/ClubContext';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Card } from '@/components/ui/card';
-import { Users, Lock, Globe, Plus, Sparkles } from 'lucide-react';
+import { Plus, ArrowLeft, Info, BookOpenCheck } from 'lucide-react';
 import { toast } from 'sonner';
-import { z } from 'zod';
-
-const createSchema = z.object({
-  name: z.string().trim().min(2).max(60),
-  description: z.string().trim().max(500).optional(),
-  visibility: z.enum(['public', 'private']),
-  join_policy: z.enum(['instant', 'approval']),
-  member_cap: z.number().int().positive().max(10000).nullable(),
-});
+import YourClubCard from '@/components/clubs/YourClubCard';
+import DiscoverSection from '@/components/clubs/DiscoverSection';
+import PendingRequestsSection from '@/components/clubs/PendingRequestsSection';
+import CommunityPulseStrip from '@/components/clubs/CommunityPulseStrip';
+import CreateClubDialog from '@/components/clubs/CreateClubDialog';
 
 const Clubs = () => {
   const { user } = useAuth();
-  const { memberships } = useClub();
+  const { memberships, isLoadingMemberships } = useClub();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const inviteCode = searchParams.get('invite');
+
+  const lastClubId = typeof window !== 'undefined' ? localStorage.getItem('lastClubId') : null;
+  const lastClub = lastClubId ? memberships.find((m) => m.club_id === lastClubId) : null;
 
   const { data: publicClubs = [] } = useQuery({
     queryKey: ['public-clubs'],
@@ -49,227 +44,218 @@ const Clubs = () => {
     queryFn: async () => {
       const { data } = await supabase.from('club_members').select('club_id');
       const counts: Record<string, number> = {};
-      (data ?? []).forEach((m: any) => { counts[m.club_id] = (counts[m.club_id] ?? 0) + 1; });
+      (data ?? []).forEach((m: any) => {
+        counts[m.club_id] = (counts[m.club_id] ?? 0) + 1;
+      });
       return counts;
     },
   });
 
-  const { data: totals } = useQuery({
-    queryKey: ['community-totals'],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_community_totals');
-      if (error) throw error;
-      return data?.[0] ?? null;
-    },
-  });
+  const myClubIds = useMemo(() => new Set(memberships.map((m) => m.club_id)), [memberships]);
 
-  const { data: popular = [] } = useQuery({
-    queryKey: ['popular-books'],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_popular_books', { _limit: 5 });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  // Show a clear, honest message when the user lands via ?invite=CODE.
+  // Client-side redemption is not possible: club_invites SELECT is admin-only
+  // (RLS: "Admins view invites"), so we cannot securely look up the club from
+  // a code without new server support. Rather than fail silently or fabricate
+  // a workaround, we surface an explanatory notice and clean the URL.
+  useEffect(() => {
+    if (!inviteCode) return;
+    toast('Ask a club admin to add you', {
+      description:
+        'Invite links can only be redeemed by a club admin right now. Share this code with them: ' +
+        inviteCode,
+      duration: 10000,
+    });
+  }, [inviteCode]);
 
-  const myClubIds = new Set(memberships.map((m) => m.club_id));
+  const clearInvite = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('invite');
+    setSearchParams(next, { replace: true });
+  };
 
-  const handleJoin = async (clubId: string, policy: 'instant' | 'approval', cap: number | null) => {
+  const handleJoin = async (
+    clubId: string,
+    policy: 'instant' | 'approval',
+    cap: number | null,
+  ) => {
     if (!user) return;
     if (cap && (memberCounts[clubId] ?? 0) >= cap) {
       toast.error('This club is full.');
       return;
     }
     if (policy === 'instant') {
-      const { error } = await supabase.from('club_members').insert({ club_id: clubId, user_id: user.id, role: 'member' });
+      const { error } = await supabase
+        .from('club_members')
+        .insert({ club_id: clubId, user_id: user.id, role: 'member' });
       if (error) return toast.error(error.message);
       toast.success('Welcome to the club!');
       queryClient.invalidateQueries({ queryKey: ['user-clubs'] });
+      queryClient.invalidateQueries({ queryKey: ['club-member-counts'] });
       navigate(`/c/${clubId}`);
     } else {
-      const { error } = await supabase.from('club_join_requests').insert({ club_id: clubId, user_id: user.id });
+      const { error } = await supabase
+        .from('club_join_requests')
+        .insert({ club_id: clubId, user_id: user.id });
       if (error) return toast.error(error.message);
       toast.success('Request sent — admins will review it.');
+      queryClient.invalidateQueries({ queryKey: ['my-pending-join-requests'] });
     }
   };
 
+  const hasClubs = memberships.length > 0;
+
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 space-y-6 animate-page-in">
-      <div>
-        <h1 className="font-display text-3xl font-bold">Your book clubs</h1>
-        <p className="text-muted-foreground">Join one, start your own, or browse what the community is reading.</p>
-      </div>
-
-      <Tabs defaultValue={memberships.length ? 'mine' : 'discover'}>
-        <TabsList>
-          <TabsTrigger value="mine">My Clubs</TabsTrigger>
-          <TabsTrigger value="discover">Discover</TabsTrigger>
-          <TabsTrigger value="create">Create</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="mine" className="space-y-3 pt-4">
-          {memberships.length === 0 ? (
-            <p className="text-muted-foreground">You haven't joined any clubs yet. Try Discover or create your own.</p>
-          ) : (
-            memberships.map((m) => (
-              <Link key={m.club_id} to={`/c/${m.club_id}`} className="block">
-                <Card className="p-4 hover:shadow-md transition-shadow flex items-center justify-between">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-display text-xl font-semibold truncate">{m.club.name}</h3>
-                      {m.club.visibility === 'private' ? <Lock className="h-4 w-4 text-muted-foreground" /> : <Globe className="h-4 w-4 text-muted-foreground" />}
-                    </div>
-                    {m.club.description && <p className="text-sm text-muted-foreground truncate">{m.club.description}</p>}
-                  </div>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground shrink-0">
-                    <Users className="h-4 w-4" /> {memberCounts[m.club_id] ?? '—'}
-                  </div>
-                </Card>
+    <div className="mx-auto max-w-5xl px-4 py-6 pb-24 space-y-8 animate-page-in sm:pb-8">
+      {/* Header */}
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="font-display text-3xl font-bold leading-tight sm:text-4xl">Clubs</h1>
+          <p className="mt-1 font-serif text-sm italic text-muted-foreground">
+            A quiet place to keep your reading crews.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {lastClub && (
+            <Button asChild variant="ghost" size="sm">
+              <Link to={`/c/${lastClub.club_id}`}>
+                <ArrowLeft className="mr-1 h-4 w-4" />
+                Back to {lastClub.club.name}
               </Link>
-            ))
+            </Button>
           )}
-        </TabsContent>
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="mr-1 h-4 w-4" /> New club
+          </Button>
+        </div>
+      </header>
 
-        <TabsContent value="discover" className="space-y-6 pt-4">
-          {totals && (
-            <Card className="p-4">
-              <h3 className="font-display font-semibold mb-2 flex items-center gap-2"><Sparkles className="h-4 w-4" /> Community totals</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                <div><div className="text-2xl font-bold">{Number(totals.total_pages_read).toLocaleString()}</div><div className="text-muted-foreground">pages read</div></div>
-                <div><div className="text-2xl font-bold">{Number(totals.total_books_finished).toLocaleString()}</div><div className="text-muted-foreground">books finished</div></div>
-                <div><div className="text-2xl font-bold">{Number(totals.total_members).toLocaleString()}</div><div className="text-muted-foreground">members</div></div>
-                <div><div className="text-2xl font-bold">{Number(totals.total_clubs).toLocaleString()}</div><div className="text-muted-foreground">clubs</div></div>
-              </div>
-            </Card>
-          )}
-
-          <div className="space-y-3">
-            <h3 className="font-display font-semibold">Public clubs</h3>
-            {publicClubs.length === 0 && <p className="text-muted-foreground text-sm">No public clubs yet.</p>}
-            {publicClubs.map((c: any) => {
-              const count = memberCounts[c.id] ?? 0;
-              const full = c.member_cap && count >= c.member_cap;
-              const joined = myClubIds.has(c.id);
-              return (
-                <Card key={c.id} className="p-4 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <h4 className="font-display text-lg font-semibold truncate">{c.name}</h4>
-                    {c.description && <p className="text-sm text-muted-foreground line-clamp-2">{c.description}</p>}
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
-                      <Users className="h-3 w-3" /> {count}{c.member_cap ? ` / ${c.member_cap}` : ''}
-                      <span>• {c.join_policy === 'instant' ? 'instant join' : 'approval required'}</span>
-                    </p>
-                  </div>
-                  {joined ? (
-                    <Button asChild variant="secondary" size="sm"><Link to={`/c/${c.id}`}>Open</Link></Button>
-                  ) : (
-                    <Button size="sm" disabled={!!full} onClick={() => handleJoin(c.id, c.join_policy, c.member_cap)}>
-                      {full ? 'Full' : c.join_policy === 'instant' ? 'Join' : 'Request'}
-                    </Button>
-                  )}
-                </Card>
-              );
-            })}
+      {/* Invite banner */}
+      {inviteCode && (
+        <Card
+          role="status"
+          className="flex items-start gap-3 border-[hsl(var(--soft-gold)/0.5)] bg-[hsl(var(--soft-gold)/0.12)] p-4"
+        >
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(var(--warm-brown))]" aria-hidden />
+          <div className="min-w-0 flex-1 text-sm">
+            <p className="font-medium">You opened an invite link.</p>
+            <p className="mt-0.5 text-muted-foreground">
+              Invite codes are redeemed by a club admin. Share this code with them and they'll add
+              you: <code className="rounded bg-card px-1.5 py-0.5">{inviteCode}</code>
+            </p>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              navigator.clipboard?.writeText(inviteCode);
+              toast.success('Code copied');
+            }}
+          >
+            Copy
+          </Button>
+          <Button variant="ghost" size="sm" onClick={clearInvite}>
+            Dismiss
+          </Button>
+        </Card>
+      )}
 
-          {popular.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="font-display font-semibold">Popular across all clubs</h3>
-              <div className="grid gap-2">
-                {popular.map((b: any, i: number) => (
-                  <Card key={i} className="p-3 flex items-center justify-between text-sm">
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{b.title}</div>
-                      <div className="text-muted-foreground text-xs truncate">{b.author}</div>
-                    </div>
-                    <div className="text-muted-foreground text-xs shrink-0">
-                      {b.avg_rating ? `★ ${Number(b.avg_rating).toFixed(1)}` : ''} {Number(b.rating_count) + Number(b.recommendation_count)} mentions
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
+      {/* Your clubs */}
+      <section aria-labelledby="your-clubs-heading" className="space-y-3">
+        <div className="flex items-baseline gap-2 border-b border-border/60 pb-2">
+          <h2
+            id="your-clubs-heading"
+            className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+          >
+            Your clubs
+          </h2>
+          {hasClubs && (
+            <span className="text-xs text-muted-foreground">
+              {memberships.length} member{memberships.length === 1 ? 'ship' : 'ships'}
+            </span>
           )}
-        </TabsContent>
+        </div>
 
-        <TabsContent value="create" className="pt-4">
-          <Card className="p-6 max-w-lg">
-            <h3 className="font-display text-xl font-semibold mb-2">Start a new book club</h3>
-            <p className="text-sm text-muted-foreground mb-4">You'll be the owner and can invite others or set it public.</p>
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-              <DialogTrigger asChild>
-                <Button><Plus className="h-4 w-4 mr-1" /> Create a club</Button>
-              </DialogTrigger>
-              <CreateClubDialog onCreated={(id) => { setCreateOpen(false); navigate(`/c/${id}`); }} />
-            </Dialog>
+        {isLoadingMemberships ? (
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <li
+                key={i}
+                aria-hidden
+                className="h-[176px] animate-pulse rounded-2xl border border-border/60 bg-card/50"
+              />
+            ))}
+          </ul>
+        ) : hasClubs ? (
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {memberships.map((m) => (
+              <li key={m.club_id}>
+                <YourClubCard
+                  membership={m}
+                  memberCount={memberCounts[m.club_id]}
+                  lastVisited={m.club_id === lastClubId}
+                />
+              </li>
+            ))}
+            <li>
+              <button
+                type="button"
+                onClick={() => setCreateOpen(true)}
+                className="flex h-full min-h-[176px] w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border/70 bg-transparent px-4 py-6 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:bg-card/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <Plus className="h-6 w-6" aria-hidden />
+                <span className="font-medium">Start a new club</span>
+              </button>
+            </li>
+          </ul>
+        ) : (
+          <Card className="flex flex-col items-center gap-3 p-8 text-center">
+            <BookOpenCheck className="h-8 w-8 text-muted-foreground" aria-hidden />
+            <div>
+              <h3 className="font-display text-xl font-semibold">No clubs yet</h3>
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                Find a public club below, or start your own reading crew.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  document.getElementById('discover-anchor')?.scrollIntoView({ behavior: 'smooth' })
+                }
+              >
+                Browse public clubs
+              </Button>
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="mr-1 h-4 w-4" /> Create a club
+              </Button>
+            </div>
           </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-};
-
-const CreateClubDialog = ({ onCreated }: { onCreated: (id: string) => void }) => {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [isPublic, setIsPublic] = useState(true);
-  const [approval, setApproval] = useState(false);
-  const [cap, setCap] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  const submit = async () => {
-    if (!user) return;
-    const parsed = createSchema.safeParse({
-      name,
-      description: description || undefined,
-      visibility: isPublic ? 'public' : 'private',
-      join_policy: approval ? 'approval' : 'instant',
-      member_cap: cap ? parseInt(cap, 10) : null,
-    });
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0].message);
-      return;
-    }
-    setSubmitting(true);
-    const { data: club, error } = await supabase.from('clubs').insert({
-      name: parsed.data.name,
-      description: parsed.data.description ?? null,
-      visibility: parsed.data.visibility,
-      join_policy: parsed.data.join_policy,
-      member_cap: parsed.data.member_cap,
-      owner_id: user.id,
-    }).select().single();
-    if (error || !club) {
-      setSubmitting(false);
-      return toast.error(error?.message ?? 'Failed to create');
-    }
-    const { error: mErr } = await supabase.from('club_members').insert({
-      club_id: club.id, user_id: user.id, role: 'owner',
-    });
-    setSubmitting(false);
-    if (mErr) return toast.error(mErr.message);
-    toast.success('Club created!');
-    queryClient.invalidateQueries({ queryKey: ['user-clubs'] });
-    queryClient.invalidateQueries({ queryKey: ['public-clubs'] });
-    onCreated(club.id);
-  };
-
-  return (
-    <DialogContent>
-      <DialogHeader><DialogTitle>Create a club</DialogTitle></DialogHeader>
-      <div className="space-y-3">
-        <div><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="My Cozy Reads" /></div>
-        <div><Label>Description</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={500} rows={3} placeholder="What's this club about?" /></div>
-        <div className="flex items-center justify-between"><div><Label>Public</Label><p className="text-xs text-muted-foreground">Anyone can discover and join.</p></div><Switch checked={isPublic} onCheckedChange={setIsPublic} /></div>
-        {isPublic && (
-          <div className="flex items-center justify-between"><div><Label>Require approval</Label><p className="text-xs text-muted-foreground">Review join requests yourself.</p></div><Switch checked={approval} onCheckedChange={setApproval} /></div>
         )}
-        <div><Label>Member cap (optional)</Label><Input type="number" value={cap} onChange={(e) => setCap(e.target.value)} placeholder="e.g. 20" /></div>
-      </div>
-      <DialogFooter><Button onClick={submit} disabled={submitting}>{submitting ? 'Creating…' : 'Create'}</Button></DialogFooter>
-    </DialogContent>
+      </section>
+
+      <PendingRequestsSection />
+
+      <div id="discover-anchor" />
+      <DiscoverSection
+        publicClubs={publicClubs}
+        memberCounts={memberCounts}
+        myClubIds={myClubIds}
+        onJoin={handleJoin}
+        defaultOpen={!hasClubs}
+      />
+
+      <CommunityPulseStrip />
+
+      <CreateClubDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={(id) => {
+          setCreateOpen(false);
+          navigate(`/c/${id}`);
+        }}
+      />
+    </div>
   );
 };
 
