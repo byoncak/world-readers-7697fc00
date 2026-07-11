@@ -1108,3 +1108,7 @@
     transition: none !important;
   }
 }
+
+/* Hide horizontal scrollbar on mobile chip navs */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
