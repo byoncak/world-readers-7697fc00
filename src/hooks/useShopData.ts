@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { usePoints } from '@/hooks/usePoints';
 import { useClub } from '@/contexts/ClubContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useRole } from '@/hooks/useRole';
 import { equipCosmetic } from '@/lib/equipCosmetic';
 import type { ShopItem } from '@/components/shop/ShopPreview';
 
@@ -11,6 +12,7 @@ export const useShopData = (userId: string | undefined) => {
   const { points, refetch: refetchPoints } = usePoints();
   const { clubId } = useClub();
   const { user } = useAuth();
+  const { isPrivileged } = useRole();
   const { toast } = useToast();
   const [items, setItems] = useState<ShopItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +27,12 @@ export const useShopData = (userId: string | undefined) => {
   const purchaseLock = useRef(false);
   const equipLock = useRef<Set<string>>(new Set());
   const isTestUser = user?.email === 'testuser@bookclub.local';
-  const testMode = isTestUser || (typeof window !== 'undefined' && localStorage.getItem('freeShopMode') === 'true');
+  // Free-shop mode is a privileged-only testing affordance. Regular users
+  // flipping localStorage cannot bypass real pricing — the client refuses to
+  // take the free path unless the caller is a test user or has an elevated
+  // role. RLS remains the ultimate guard; this is defence in depth.
+  const freeFlag = typeof window !== 'undefined' && localStorage.getItem('freeShopMode') === 'true';
+  const testMode = isTestUser || (freeFlag && isPrivileged);
 
   const load = useCallback(async () => {
     if (!userId) return;
