@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useClub } from '@/contexts/ClubContext';
 import { toast } from '@/hooks/use-toast';
 import {
   Dialog,
