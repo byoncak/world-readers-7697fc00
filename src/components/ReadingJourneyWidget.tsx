@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useClub } from '@/contexts/ClubContext';
 import { Library, Sparkles } from 'lucide-react';
 import { LoadingBlock, ErrorBlock } from '@/components/StateBlock';
 
