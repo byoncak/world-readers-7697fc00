@@ -1146,7 +1146,9 @@
   .electric-border,
   .electric-border *,
   .holographic-border,
-  .holographic-border * {
+  .holographic-border *,
+  .starry-twinkle,
+  .starry-twinkle-soft {
     animation: none !important;
     transition: none !important;
   }
