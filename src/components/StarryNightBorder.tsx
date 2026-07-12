@@ -73,25 +73,32 @@ const pt = (angleDeg: number, radius: number) => {
 const RING_R = 46; // just outside the avatar (which is inset ~9% → radius ~41)
 
 // Primary (always visible) — a handful, staggered.
+const makeStar = (
+  p: { x: number; y: number },
+  r: number,
+  kind: 'g' | 'd',
+  delay: number,
+): StarSpec => ({ cx: p.x, cy: p.y, r, kind, delay });
+
 const PRIMARY_STARS: StarSpec[] = [
-  { ...pt(-72, RING_R), r: 3.2, kind: 'g', delay: 0 },
-  { ...pt(18, RING_R), r: 2.4, kind: 'g', delay: 0.7 },
-  { ...pt(112, RING_R), r: 2.8, kind: 'g', delay: 1.4 },
-  { ...pt(205, RING_R), r: 2.2, kind: 'd', delay: 0.3 },
-  { ...pt(258, RING_R), r: 2.6, kind: 'g', delay: 1.9 },
-].map((s) => ({ cx: s.x, cy: s.y, r: s.r, kind: s.kind, delay: s.delay }));
+  makeStar(pt(-72, RING_R), 3.2, 'g', 0),
+  makeStar(pt(18, RING_R), 2.4, 'g', 0.7),
+  makeStar(pt(112, RING_R), 2.8, 'g', 1.4),
+  makeStar(pt(205, RING_R), 2.2, 'd', 0.3),
+  makeStar(pt(258, RING_R), 2.6, 'g', 1.9),
+];
 
 // Secondary (only at md/lg or when not preview) — smaller, denser.
 const SECONDARY_STARS: StarSpec[] = [
-  { ...pt(-40, RING_R + 2), r: 1.3, kind: 'd', delay: 0.9 },
-  { ...pt(48, RING_R - 2), r: 1.5, kind: 'd', delay: 1.6 },
-  { ...pt(85, RING_R + 3), r: 1.2, kind: 'd', delay: 0.4 },
-  { ...pt(150, RING_R - 1), r: 1.4, kind: 'd', delay: 2.1 },
-  { ...pt(180, RING_R + 2), r: 1.6, kind: 'g', delay: 1.1 },
-  { ...pt(232, RING_R - 3), r: 1.3, kind: 'd', delay: 0.6 },
-  { ...pt(305, RING_R + 2), r: 1.5, kind: 'd', delay: 1.7 },
-  { ...pt(340, RING_R - 2), r: 1.4, kind: 'g', delay: 0.2 },
-].map((s) => ({ cx: s.x, cy: s.y, r: s.r, kind: s.kind, delay: s.delay }));
+  makeStar(pt(-40, RING_R + 2), 1.3, 'd', 0.9),
+  makeStar(pt(48, RING_R - 2), 1.5, 'd', 1.6),
+  makeStar(pt(85, RING_R + 3), 1.2, 'd', 0.4),
+  makeStar(pt(150, RING_R - 1), 1.4, 'd', 2.1),
+  makeStar(pt(180, RING_R + 2), 1.6, 'g', 1.1),
+  makeStar(pt(232, RING_R - 3), 1.3, 'd', 0.6),
+  makeStar(pt(305, RING_R + 2), 1.5, 'd', 1.7),
+  makeStar(pt(340, RING_R - 2), 1.4, 'g', 0.2),
+];
 
 // Faint constellation speckle inside the ring band.
 const SPECKLES: Array<{ cx: number; cy: number; r: number }> = [
