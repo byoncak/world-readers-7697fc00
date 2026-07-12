@@ -151,7 +151,6 @@ async function fetchFeed(): Promise<ActivityItem[]> {
       createdAt: r.completed_at,
       userId: r.user_id,
       bookId: r.book_id,
-      link: r.user_id ? `/member/${r.user_id}` : undefined,
       ...profileFor(r.user_id),
       ...bookFor(r.book_id),
     })
@@ -174,7 +173,6 @@ async function fetchFeed(): Promise<ActivityItem[]> {
       createdAt: r.last_updated,
       userId: r.user_id,
       bookId: r.book_id,
-      link: r.user_id ? `/member/${r.user_id}` : undefined,
       ...profileFor(r.user_id),
       ...bookFor(r.book_id),
     });
@@ -187,7 +185,6 @@ async function fetchFeed(): Promise<ActivityItem[]> {
       userId: r.user_id,
       bookTitle: r.title,
       bookAuthor: r.author,
-      link: r.user_id ? `/member/${r.user_id}` : undefined,
       ...profileFor(r.user_id),
     })
   );
@@ -200,7 +197,6 @@ async function fetchFeed(): Promise<ActivityItem[]> {
       bookId: r.book_id,
       text: r.quote_text,
       isSpoiler: r.is_spoiler,
-      link: '/journal?tab=quotes',
       ...profileFor(r.user_id),
       ...bookFor(r.book_id),
     })
@@ -214,7 +210,6 @@ async function fetchFeed(): Promise<ActivityItem[]> {
       bookId: r.book_id,
       rating: r.rating,
       text: r.review ?? undefined,
-      link: r.user_id ? `/member/${r.user_id}` : undefined,
       ...profileFor(r.user_id),
       ...bookFor(r.book_id),
     })
@@ -227,7 +222,6 @@ async function fetchFeed(): Promise<ActivityItem[]> {
       userId: r.user_id,
       displayName: r.display_name ?? 'A new reader',
       avatarUrl: r.avatar_url,
-      link: r.user_id ? `/member/${r.user_id}` : undefined,
     })
   );
   (votesRes.data ?? []).forEach((r: any) =>
@@ -238,7 +232,6 @@ async function fetchFeed(): Promise<ActivityItem[]> {
       userId: r.user_id,
       bookTitle: r.suggestion_title,
       bookAuthor: r.suggestion_author,
-      link: r.user_id ? `/member/${r.user_id}` : '/lounge',
       ...profileFor(r.user_id),
     })
   );
@@ -248,7 +241,6 @@ async function fetchFeed(): Promise<ActivityItem[]> {
       kind: 'poll',
       createdAt: r.created_at,
       text: r.question,
-      link: '/lounge?tab=polls',
     })
   );
   (announcementsRes.data ?? []).forEach((r: any) =>
