@@ -79,6 +79,14 @@ const UserAvatarInner = memo(({ userId, avatarUrl, displayName, size = 'sm', cla
     );
   }
 
+  if (isStarry) {
+    return (
+      <StarryNightBorder size={size} className={className} variantKey={frame?.variant_key}>
+        {avatarContent}
+      </StarryNightBorder>
+    );
+  }
+
   const renderAvatar = () => {
     if (hasGradientFrame) {
       const padSize = size === 'lg' ? '3px' : size === 'md' ? '3px' : '2px';
