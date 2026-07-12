@@ -8,8 +8,8 @@
  * "Rendered more hooks than during the previous render." on any recurrence.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, fireEvent, within } from '@testing-library/react';
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Admin from './Admin';
 
 const mockUseAuth = vi.fn();
@@ -17,12 +17,14 @@ const mockUseRole = vi.fn();
 
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => mockUseAuth() }));
 vi.mock('@/hooks/useRole', () => ({ useRole: () => mockUseRole() }));
+
+let clubMock: any = {
+  club: { id: 'club-1', name: 'Test Club' },
+  clubId: 'club-1',
+  memberships: [{ club_id: 'club-1', role: 'admin', club: { id: 'club-1', name: 'Test Club' } }],
+};
 vi.mock('@/contexts/ClubContext', () => ({
-  useClub: () => ({
-    club: { id: 'club-1', name: 'Test Club' },
-    clubId: 'club-1',
-    memberships: [{ club_id: 'club-1', role: 'admin', club: { id: 'club-1', name: 'Test Club' } }],
-  }),
+  useClub: () => clubMock,
 }));
 
 // Stub every child card — we only care about the Admin shell's hook order.
