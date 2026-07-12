@@ -6,6 +6,7 @@ import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, getDay,
 import { LoadingBlock, ErrorBlock } from '@/components/StateBlock';
 
 const NextMeetupWidget = () => {
+  const { clubId } = useClub();
   const [meetingDate, setMeetingDate] = useState<Date | null>(null);
   const [meetingLocation, setMeetingLocation] = useState<string | null>(null);
   const [bookTitle, setBookTitle] = useState('');
@@ -15,12 +16,17 @@ const NextMeetupWidget = () => {
   const [error, setError] = useState(false);
 
   const fetchNextMeeting = useCallback(async () => {
+    setMeetingDate(null);
+    setBookTitle('');
+    setMeetingLocation(null);
+    if (!clubId) { setLoading(false); return; }
     setLoading(true);
     setError(false);
     const { data, error: err } = await supabase
       .from('books')
       .select('title, meeting_date, meeting_location')
       .eq('status', 'current')
+      .eq('club_id', clubId)
       .not('meeting_date', 'is', null)
       .limit(1);
 
@@ -34,7 +40,7 @@ const NextMeetupWidget = () => {
       setCurrentMonth(d);
     }
     setLoading(false);
-  }, []);
+  }, [clubId]);
 
   useEffect(() => { fetchNextMeeting(); }, [fetchNextMeeting]);
 
