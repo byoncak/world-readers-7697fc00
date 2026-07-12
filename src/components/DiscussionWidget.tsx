@@ -262,6 +262,7 @@ PostCard.displayName = 'PostCard';
 
 const DiscussionWidget = () => {
   const { user } = useAuth();
+  const { clubId } = useClub();
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [replyTo, setReplyTo] = useState<Discussion | null>(null);
