@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useClub } from '@/contexts/ClubContext';
 import { supabase } from '@/integrations/supabase/client';
 import { MessageCircle, BookOpen, Send, ArrowLeft, PenSquare, Search, Paperclip, Video, Users } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
