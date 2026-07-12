@@ -127,6 +127,7 @@ const BookWishlistWidget = () => {
     try {
       await supabase.from('book_votes').insert({
         user_id: user.id,
+        club_id: clubId,
         suggestion_title: title.trim(),
         suggestion_author: author.trim(),
         book_id: currentBookId,
