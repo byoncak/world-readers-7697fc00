@@ -24,20 +24,26 @@ interface Discussion {
 }
 
 const DiscussionArchive = () => {
+  const { clubId } = useClub();
   const [books, setBooks] = useState<CompletedBook[]>([]);
   const [discussionsByBook, setDiscussionsByBook] = useState<Record<string, Discussion[]>>({});
   const [loadingBook, setLoadingBook] = useState<string | null>(null);
   const [openBookId, setOpenBookId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchCompletedBooks();
-  }, []);
+    setBooks([]);
+    setDiscussionsByBook({});
+    setOpenBookId(null);
+    if (clubId) fetchCompletedBooks();
+  }, [clubId]);
 
   const fetchCompletedBooks = async () => {
+    if (!clubId) return;
     const { data } = await supabase
       .from('books')
       .select('id, title, author, selected_date')
       .eq('status', 'completed')
+      .eq('club_id', clubId)
       .order('selected_date', { ascending: false });
     if (data) setBooks(data);
   };
