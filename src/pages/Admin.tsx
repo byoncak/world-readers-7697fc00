@@ -212,15 +212,15 @@ const Admin = () => {
   const showTabs = availableScopes.length > 1;
   const clubOnly = availableScopes.length === 1 && availableScopes[0] === 'club';
 
-  const heading = clubOnly && club
-    ? `Manage ${club.name}`
-    : effectiveScope === 'club' && club
-      ? `Manage ${club.name}`
-      : effectiveScope === 'community'
-        ? 'Community moderation'
-        : effectiveScope === 'system'
-          ? 'System controls'
-          : 'Admin';
+  const isClubScope = effectiveScope === 'club' && !!club;
+  const multiAdmin = isClubScope && adminClubs.length > 1 && !!clubId;
+
+  const nonClubHeading =
+    effectiveScope === 'community' ? 'Community moderation'
+    : effectiveScope === 'system' ? 'System controls'
+    : 'Admin';
+
+  const eyebrow = isClubScope ? 'Manage club' : null;
 
   const subhead = effectiveScope === 'club'
     ? 'Books, members, announcements, and club settings.'
@@ -231,35 +231,32 @@ const Admin = () => {
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 pb-32 space-y-4">
       <header className="px-1 pb-1 space-y-2">
-        {effectiveScope === 'club' && adminClubs.length > 1 && clubId && club ? (
+        {eyebrow && (
+          <p className="text-[11px] uppercase tracking-[0.12em] font-body font-semibold text-muted-foreground">
+            {eyebrow}
+          </p>
+        )}
+        {isClubScope && multiAdmin ? (
           <Select
-            value={clubId}
+            value={clubId!}
             onValueChange={(next) => {
               if (next && next !== clubId) navigate(`/c/${next}/admin`);
             }}
           >
             <SelectTrigger
               aria-label="Switch club to manage"
-              className="group h-auto min-h-[44px] w-full items-start gap-2 rounded-lg border-0 bg-transparent -mx-1 px-1 py-1 text-left shadow-none hover:bg-muted/60 focus:ring-2 focus:ring-ring focus:ring-offset-0 [&>svg]:mt-2 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:opacity-70 [&>span]:line-clamp-none"
+              className="group h-auto min-h-[56px] w-full items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-left shadow-sm hover:bg-muted/40 focus:ring-2 focus:ring-ring [&>svg]:h-5 [&>svg]:w-5 [&>svg]:shrink-0 [&>svg]:opacity-80 [&>span]:line-clamp-none"
             >
-              <span
-                role="heading"
-                aria-level={1}
-                className="cozy-title text-2xl leading-tight flex-1 break-words"
-              >
-                Manage {club.name}
+              <span className="cozy-title text-2xl leading-tight flex-1 break-words">
+                {club!.name}
               </span>
             </SelectTrigger>
             <SelectContent
               align="start"
-              className="max-h-[70vh] w-[min(20rem,calc(100vw-2rem))]"
+              className="max-h-[70vh] w-[min(22rem,calc(100vw-2rem))]"
             >
               {adminClubs.map((m) => (
-                <SelectItem
-                  key={m.club_id}
-                  value={m.club_id}
-                  className="min-h-[44px]"
-                >
+                <SelectItem key={m.club_id} value={m.club_id} className="min-h-[44px]">
                   <span className="flex items-center gap-2">
                     <span className="break-words">{m.club.name}</span>
                     <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -271,7 +268,9 @@ const Admin = () => {
             </SelectContent>
           </Select>
         ) : (
-          <h1 className="cozy-title text-2xl leading-tight break-words">{heading}</h1>
+          <h1 className="cozy-title text-2xl leading-tight break-words">
+            {isClubScope ? club!.name : nonClubHeading}
+          </h1>
         )}
         <p className="text-sm text-muted-foreground font-body">{subhead}</p>
       </header>
