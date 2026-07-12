@@ -247,7 +247,7 @@ const Admin = () => {
                 aria-level={1}
                 className="cozy-title text-2xl leading-tight flex-1 break-words"
               >
-                Manage <SelectValue />
+                Manage {club.name}
               </span>
             </SelectTrigger>
             <SelectContent
