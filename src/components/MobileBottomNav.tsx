@@ -19,12 +19,12 @@ const MobileBottomNav = () => {
     };
 
     updateHeight();
-    const observer = new ResizeObserver(updateHeight);
-    observer.observe(nav);
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateHeight);
+    observer?.observe(nav);
     window.addEventListener('resize', updateHeight);
 
     return () => {
-      observer.disconnect();
+      observer?.disconnect();
       window.removeEventListener('resize', updateHeight);
       root.style.removeProperty('--mobile-nav-rendered-height');
     };
