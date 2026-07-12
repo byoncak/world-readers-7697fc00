@@ -325,19 +325,23 @@ const DiscussionWidget = () => {
   }, []);
 
   useEffect(() => {
+    setCurrentBookId(null);
+    setDiscussions([]);
+    if (!clubId) return;
     const init = async () => {
       const { data: books } = await supabase
         .from('books')
-        .select('id')
+        .select('id, club_id')
         .eq('status', 'current')
+        .eq('club_id', clubId)
         .limit(1);
-      if (books && books.length > 0) {
+      if (books && books.length > 0 && books[0].club_id === clubId) {
         setCurrentBookId(books[0].id);
         fetchDiscussions(books[0].id);
       }
     };
     init();
-  }, [fetchDiscussions]);
+  }, [fetchDiscussions, clubId]);
 
   useEffect(() => {
     if (!currentBookId) return;
