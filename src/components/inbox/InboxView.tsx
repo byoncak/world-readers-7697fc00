@@ -44,6 +44,7 @@ interface InboxViewProps {
 
 const InboxView = ({ embedded = false }: InboxViewProps) => {
   const { user } = useAuth();
+  const { clubId } = useClub();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
