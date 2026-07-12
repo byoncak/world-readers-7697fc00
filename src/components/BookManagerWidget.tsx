@@ -230,6 +230,9 @@ const BookManagerWidget = () => {
     if (!title.trim() || !author.trim()) return;
     setSaving(true);
 
+    // Prefer an uploaded cover; fall back to the remote cover from search.
+    const initialCoverUrl = coverFile ? null : (coverUrl && !coverFailed ? coverUrl : null);
+
     const { data: inserted, error } = await supabase
       .from('books')
       .insert({
@@ -237,7 +240,7 @@ const BookManagerWidget = () => {
         title: title.trim(),
         author: author.trim(),
         total_pages: totalPages ? parseInt(totalPages) : null,
-        cover_url: null,
+        cover_url: initialCoverUrl,
         status: 'upcoming',
         pdf_url: pdfUrl.trim() || null,
       })
@@ -271,12 +274,7 @@ const BookManagerWidget = () => {
       }
     }
 
-    setTitle('');
-    setAuthor('');
-    setTotalPages('');
-    setCoverFile(null);
-    setSpineFile(null);
-    setPdfUrl('');
+    resetForm();
     setShowForm(false);
     setSaving(false);
     fetchBooks();
