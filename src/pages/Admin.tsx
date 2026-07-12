@@ -230,9 +230,40 @@ const Admin = () => {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 pb-32 space-y-4">
-      <header className="px-1 pb-1">
+      <header className="px-1 pb-1 space-y-2">
         <h1 className="cozy-title text-2xl">{heading}</h1>
         <p className="text-sm text-muted-foreground font-body">{subhead}</p>
+        {effectiveScope === 'club' && adminClubs.length > 1 && clubId && (
+          <div className="pt-1">
+            <label
+              htmlFor="admin-club-switcher"
+              className="block text-[11px] uppercase tracking-wider font-body font-semibold text-muted-foreground mb-1"
+            >
+              Switch club to manage
+            </label>
+            <Select
+              value={clubId}
+              onValueChange={(next) => {
+                if (next && next !== clubId) navigate(`/c/${next}/admin`);
+              }}
+            >
+              <SelectTrigger
+                id="admin-club-switcher"
+                aria-label="Switch club to manage"
+                className="w-full min-h-[44px]"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {adminClubs.map((m) => (
+                  <SelectItem key={m.club_id} value={m.club_id}>
+                    <span className="truncate">{m.club.name}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </header>
 
       {showTabs && (
