@@ -148,8 +148,9 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     const { error } = await supabase.from('direct_messages').insert({
       sender_id: user.id,
       receiver_id: activeConvo.otherUserId,
+      club_id: clubId,
       message,
-    });
+    } as any);
 
     if (error) {
       setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
@@ -157,7 +158,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     }
 
     return true;
-  }, [activeConvo, buildOptimisticMessage, pushOptimisticMessage, sending, user]);
+  }, [activeConvo, buildOptimisticMessage, pushOptimisticMessage, sending, user, clubId]);
 
   // Fetch conversation list
   const fetchConversations = useCallback(async () => {
