@@ -34,10 +34,20 @@ export const usePoints = () => {
   const { clubId } = useClub();
   const qc = useQueryClient();
   const prev = useRef<number | null>(null);
+  const baselineClubRef = useRef<string | null>(null);
 
   const isTestUser = user?.email === 'testuser@bookclub.local';
   const enabled = !!user && !!clubId && !isTestUser;
   const key = enabled ? pointsQueryKey(user!.id, clubId!) : ['user-points', 'disabled'];
+
+  // Reset the diff baseline on every club change so switching clubs never
+  // spawns a phantom reward pop. New baseline is set below once data lands.
+  useEffect(() => {
+    if (clubId !== baselineClubRef.current) {
+      prev.current = null;
+      baselineClubRef.current = clubId;
+    }
+  }, [clubId]);
 
   const query = useQuery<PointsRow>({
     queryKey: key,
