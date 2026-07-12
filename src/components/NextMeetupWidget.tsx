@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useClub } from '@/contexts/ClubContext';
 import { Calendar, Coffee, ChevronDown, ChevronUp } from 'lucide-react';
 import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, differenceInCalendarDays } from 'date-fns';
 import { LoadingBlock, ErrorBlock } from '@/components/StateBlock';
