@@ -13,10 +13,13 @@ import {
   ExternalLink,
   X,
   Paperclip,
+  Search,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { cn } from '@/lib/utils';
+import { searchGoogleBooks, type BookSearchResult } from '@/lib/googleBooks';
 import {
   Popover,
   PopoverContent,
