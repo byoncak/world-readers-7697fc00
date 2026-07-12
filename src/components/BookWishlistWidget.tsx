@@ -184,8 +184,9 @@ const BookWishlistWidget = () => {
     await supabase.from('suggestion_comments').insert({
       suggestion_id: expandedId,
       user_id: user.id,
+      club_id: clubId,
       message: newComment.trim(),
-    });
+    } as any);
 
     setNewComment('');
     fetchComments(expandedId);
