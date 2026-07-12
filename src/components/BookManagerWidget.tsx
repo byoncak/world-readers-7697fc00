@@ -67,6 +67,70 @@ const BookManagerWidget = () => {
   const [pdfEditValue, setPdfEditValue] = useState('');
   const coverInputRef = useRef<HTMLInputElement>(null);
 
+  // Book search / autofill state
+  const [bookQuery, setBookQuery] = useState('');
+  const [bookResults, setBookResults] = useState<BookSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null); // from search result
+  const [coverFailed, setCoverFailed] = useState(false);
+  // Fields the admin has manually edited — protected from autofill overwrite.
+  const [touched, setTouched] = useState<{ title?: boolean; author?: boolean; pages?: boolean }>({});
+
+  const resetForm = () => {
+    setTitle('');
+    setAuthor('');
+    setTotalPages('');
+    setCoverFile(null);
+    setSpineFile(null);
+    setPdfUrl('');
+    setBookQuery('');
+    setBookResults([]);
+    setManualMode(false);
+    setCoverUrl(null);
+    setCoverFailed(false);
+    setTouched({});
+  };
+
+  // Debounced book search — aborts stale requests.
+  useEffect(() => {
+    if (!showForm || manualMode) return;
+    const q = bookQuery.trim();
+    if (q.length < 2) {
+      setBookResults([]);
+      setSearching(false);
+      setSearchError(false);
+      return;
+    }
+    const ctrl = new AbortController();
+    setSearching(true);
+    setSearchError(false);
+    const t = setTimeout(async () => {
+      try {
+        const results = await searchGoogleBooks(q, ctrl.signal);
+        if (!ctrl.signal.aborted) setBookResults(results);
+      } catch (e: any) {
+        if (e?.name !== 'AbortError') setSearchError(true);
+      } finally {
+        if (!ctrl.signal.aborted) setSearching(false);
+      }
+    }, 350);
+    return () => { clearTimeout(t); ctrl.abort(); };
+  }, [bookQuery, showForm, manualMode]);
+
+  const applyResult = (r: BookSearchResult) => {
+    // Choosing a new result explicitly = admin accepts these values.
+    // Only preserve fields they've *manually* typed since the last selection.
+    if (!touched.title) setTitle(r.title || '');
+    if (!touched.author) setAuthor(r.author || '');
+    if (!touched.pages) setTotalPages(r.pages ? String(r.pages) : '');
+    setCoverUrl(r.coverUrl || null);
+    setCoverFailed(false);
+    setCoverFile(null); // remote cover takes precedence unless admin uploads
+  };
+
+
   const uploadImage = async (
     file: File,
     bookId: string,
