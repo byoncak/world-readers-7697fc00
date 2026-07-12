@@ -29,7 +29,7 @@ const UserAvatarInner = memo(({ userId, avatarUrl, displayName, size = 'sm', cla
 
   const hasGradientFrame = frame?.gradient;
   const frameStyle = frame ? parseInlineStyle(frame.border_style) : undefined;
-  const useSparkles = frame?.animation_class === 'animate-starry-twinkle';
+  const isStarry = frame?.animation_class === 'animate-starry-twinkle';
   const isElectric = frame?.animation_class === 'animate-electric-border';
   const isChrome = frame?.animation_class === 'animate-chrome-ring';
   const isDarkMagic = frame?.animation_class === 'animate-dark-magic';
