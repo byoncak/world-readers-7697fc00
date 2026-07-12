@@ -97,6 +97,9 @@ const App = () => (
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Route>
+              {FramesHarness && (
+                <Route path="/__frames" element={<FramesHarness />} />
+              )}
             </Routes>
             </ErrorBoundary>
           </Suspense>
