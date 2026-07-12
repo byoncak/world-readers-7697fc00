@@ -25,6 +25,7 @@ const ICONS = {
 };
 
 const ActivityFeed = ({ defaultOpen = false }: { defaultOpen?: boolean }) => {
+  const { clubPath } = useClub();
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
