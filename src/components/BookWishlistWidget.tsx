@@ -32,6 +32,7 @@ interface Suggestion {
 
 const BookWishlistWidget = () => {
   const { user } = useAuth();
+  const { clubId } = useClub();
   const { isPrivileged: globalPriv, canManageCurrentClub } = useRole();
   const isPrivileged = globalPriv || canManageCurrentClub;
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -53,9 +54,12 @@ const BookWishlistWidget = () => {
     : suggestions.some(s => s.user_id === user?.id);
 
   useEffect(() => {
+    setSuggestions([]);
+    setCurrentBookId(null);
+    if (!clubId) return;
     fetchCurrentBook();
     fetchSuggestions();
-  }, []);
+  }, [clubId]);
 
   useEffect(() => {
     const q = bookQuery.trim();
