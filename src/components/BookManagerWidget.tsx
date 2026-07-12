@@ -343,7 +343,13 @@ const BookManagerWidget = () => {
         </div>
         {isAdmin && (
           <button
-            onClick={() => setShowForm((s) => !s)}
+            onClick={() => {
+              setShowForm((s) => {
+                const next = !s;
+                if (!s) resetForm(); // fresh state each time we open
+                return next;
+              });
+            }}
             className="cozy-btn-primary flex items-center gap-1 text-xs px-2.5 py-1.5 whitespace-nowrap min-h-[36px]"
             aria-expanded={showForm}
           >
