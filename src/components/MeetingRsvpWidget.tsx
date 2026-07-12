@@ -82,12 +82,15 @@ const MeetingRsvpWidget = () => {
   };
 
   useEffect(() => {
+    setMeeting(null);
+    setRsvps([]);
+    setMyResponse(null);
     const init = async () => {
       const m = await fetchMeeting();
       if (m) fetchRsvps(m.id);
     };
     init();
-  }, [user]);
+  }, [user, clubId]);
 
   useEffect(() => {
     if (!meeting) return;
