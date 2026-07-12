@@ -93,7 +93,7 @@ const UserAvatarInner = memo(({ userId, avatarUrl, displayName, size = 'sm', cla
 
       return (
         <div
-          className={cn('shrink-0 rounded-full', !useSparkles && (frame.animation_class || 'animate-chrome-shimmer'), sizeClasses[size], className)}
+          className={cn('shrink-0 rounded-full', frame.animation_class || 'animate-chrome-shimmer', sizeClasses[size], className)}
           style={{
             background: frame.gradient,
             padding: padSize,
