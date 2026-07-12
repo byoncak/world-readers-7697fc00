@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useClub } from '@/contexts/ClubContext';
 import { useRole } from '@/hooks/useRole';
 import { BookHeart, Heart, Plus, MessageCircle, Send, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
