@@ -45,6 +45,23 @@ const FramePreview = ({ asset_data }: { asset_data: Record<string, any> }) => {
   const isChrome = asset_data.animation_class === 'animate-chrome-ring';
   const isDarkMagic = asset_data.animation_class === 'animate-dark-magic';
   const isHolographic = asset_data.animation_class === 'animate-holographic-ring';
+  const isStarry = asset_data.animation_class === 'animate-starry-twinkle';
+
+  if (isStarry) {
+    return (
+      <div className={PREVIEW_WRAPPER}>
+        <div className={PREVIEW_BOX}>
+          <div style={{ transform: 'scale(1.25)', transformOrigin: 'center' }}>
+            <StarryNightBorder size="md" preview variantKey={asset_data.variants?.[0]?.key}>
+              <div className="h-full w-full rounded-full bg-muted flex items-center justify-center">
+                <User className="h-7 w-7 text-muted-foreground" />
+              </div>
+            </StarryNightBorder>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   if (isElectric) {
     return (
