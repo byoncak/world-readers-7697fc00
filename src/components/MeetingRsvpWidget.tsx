@@ -115,7 +115,7 @@ const MeetingRsvpWidget = () => {
       if (existing) {
         await supabase.from('meeting_rsvps').update({ response, updated_at: new Date().toISOString() }).eq('id', existing.id);
       } else {
-        await supabase.from('meeting_rsvps').insert({ book_id: meeting.id, user_id: user.id, response });
+        await supabase.from('meeting_rsvps').insert({ book_id: meeting.id, user_id: user.id, response, club_id: clubId } as any);
       }
       setMyResponse(response);
       toast({ title: `${responseConfig[response].emoji} You're ${responseConfig[response].label.toLowerCase()}!` });
