@@ -5,6 +5,7 @@ import { Activity, MessageCircle, BookOpen, ThumbsUp, UserPlus, ChevronDown, Che
 import { formatDistanceToNow } from 'date-fns';
 import UserAvatar from '@/components/UserAvatar';
 import { LoadingBlock, ErrorBlock, EmptyBlock } from '@/components/StateBlock';
+import { useClub } from '@/contexts/ClubContext';
 
 interface FeedEvent {
   id: string;
