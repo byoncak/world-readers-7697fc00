@@ -3,6 +3,7 @@ import ElectricBorder from '@/components/ElectricBorder';
 import ChromeBorder from '@/components/ChromeBorder';
 import DarkMagicBorder from '@/components/DarkMagicBorder';
 import HolographicBorder from '@/components/HolographicBorder';
+import StarryNightBorder from '@/components/StarryNightBorder';
 import { getThemePreview } from './themePreviews';
 
 interface ShopItem {
