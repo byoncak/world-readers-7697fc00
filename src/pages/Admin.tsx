@@ -61,8 +61,13 @@ const Admin = () => {
     canManageCurrentClub,
     loading: roleLoading,
   } = useRole();
-  const { club } = useClub();
+  const { club, clubId, memberships } = useClub();
+  const navigate = useNavigate();
   const [activeScope, setActiveScope] = useState<Scope>('club');
+
+  const adminClubs = memberships.filter(
+    (m) => m.role === 'owner' || m.role === 'admin',
+  );
 
   if (roleLoading) {
     return (
