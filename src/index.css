@@ -334,23 +334,31 @@
   }
 
   .mobile-nav-offset {
-    padding-bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: var(--mobile-nav-rendered-height, calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px)));
   }
 
-  /* Floating action button positioned above the mobile dock + iOS home indicator.
-     On desktop the dock is hidden, so we anchor to a comfortable viewport offset. */
-  .fab-above-nav {
-    bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px) + 14px);
-    right: 1rem;
+  /* Portaled floating action buttons: keep the full 48px button above the rendered mobile dock. */
+  .mobile-fab {
+    position: fixed !important;
+    bottom: calc(var(--mobile-nav-rendered-height, calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px))) + var(--mobile-fab-gap, 1rem)) !important;
+    right: 1rem !important;
+    z-index: 40;
+  }
+
+  .mobile-fab-content-offset {
+    padding-bottom: calc(var(--mobile-fab-size, 3rem) + var(--mobile-fab-gap, 1rem) + 1rem) !important;
   }
 
   @media (min-width: 640px) {
     .mobile-nav-offset {
       padding-bottom: 0;
     }
-    .fab-above-nav {
-      bottom: 1.5rem;
-      right: 1.5rem;
+    .mobile-fab {
+      bottom: 1.5rem !important;
+      right: 1.5rem !important;
+    }
+    .mobile-fab-content-offset {
+      padding-bottom: 1rem !important;
     }
   }
 }

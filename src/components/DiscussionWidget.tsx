@@ -12,6 +12,7 @@ import StyledName from './StyledName';
 import UserAvatar from './UserAvatar';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { LoadingBlock, ErrorBlock, EmptyBlock } from '@/components/StateBlock';
+import MobileFab from '@/components/MobileFab';
 
 interface Discussion {
   id: string;
@@ -444,7 +445,7 @@ const DiscussionWidget = () => {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-1">
-        <div className="flex flex-col gap-4 py-3">
+        <div className="mobile-fab-content-offset flex flex-col gap-4 py-3">
           {loadingDiscussions ? (
             <LoadingBlock label="Loading the discussion…" rows={4} />
           ) : discussionsError ? (
@@ -575,13 +576,13 @@ const DiscussionWidget = () => {
 
       {/* FAB */}
       {showFAB && (
-        <button
+        <MobileFab
           onClick={handleFABClick}
-          className="fab-above-nav fixed z-40 h-12 w-12 rounded-full bg-secondary text-secondary-foreground shadow-lg flex items-center justify-center hover:scale-105 transition-transform active:scale-95"
           title="New post"
+          label="New post"
         >
           <Plus className="h-6 w-6" />
-        </button>
+        </MobileFab>
       )}
 
       <ConfirmDialog

@@ -4,13 +4,14 @@ import QuoteComposerDialog from '@/components/quotes/QuoteComposerDialog';
 import QuotePoster from '@/components/quotes/QuotePoster';
 import { useAllQuotes } from '@/hooks/useAllQuotes';
 import { LoadingBlock, ErrorBlock, EmptyBlock } from '@/components/StateBlock';
+import MobileFab from '@/components/MobileFab';
 
 const QuoteWall = () => {
   const [composerOpen, setComposerOpen] = useState(false);
   const { data: quotes = [], isLoading, isError, refetch } = useAllQuotes();
 
   return (
-    <div className="space-y-4 pt-2">
+    <div className="mobile-fab-content-offset space-y-4 pt-2">
       {isLoading ? (
         <LoadingBlock label="Loading quotes…" rows={4} />
       ) : isError ? (
@@ -27,14 +28,14 @@ const QuoteWall = () => {
         </div>
       )}
 
-      <button
+      <MobileFab
         onClick={() => setComposerOpen(true)}
-        className="fab-above-nav fixed z-40 h-12 w-12 rounded-full bg-secondary text-secondary-foreground shadow-lg flex items-center justify-center hover:scale-105 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         title="New quote"
-        aria-label="Add a new quote"
+        label="Add a new quote"
+        hidden={composerOpen}
       >
         <Plus className="h-6 w-6" aria-hidden="true" />
-      </button>
+      </MobileFab>
 
       <QuoteComposerDialog open={composerOpen} onOpenChange={setComposerOpen} />
     </div>

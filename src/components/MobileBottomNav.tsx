@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { BookOpen, Sparkles, Feather, MessageCircleMore } from 'lucide-react';
 import { useLoungeUnread } from '@/hooks/useLoungeUnread';
@@ -7,6 +8,27 @@ const MobileBottomNav = () => {
   const { pathname } = useLocation();
   const { hasAny: loungeHasUnread } = useLoungeUnread();
   const { clubId, clubPath } = useClub();
+  const navRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav || typeof window === 'undefined') return;
+    const root = document.documentElement;
+    const updateHeight = () => {
+      root.style.setProperty('--mobile-nav-rendered-height', `${Math.ceil(nav.getBoundingClientRect().height)}px`);
+    };
+
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(nav);
+    window.addEventListener('resize', updateHeight);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateHeight);
+      root.style.removeProperty('--mobile-nav-rendered-height');
+    };
+  }, [clubId]);
 
   if (!clubId) return null;
 
@@ -29,7 +51,7 @@ const MobileBottomNav = () => {
   };
 
   return (
-    <nav className="safe-bottom fixed bottom-0 left-0 right-0 z-50 min-h-[var(--mobile-nav-height)] border-t border-border bg-card/95 backdrop-blur-md sm:hidden">
+    <nav ref={navRef} className="safe-bottom fixed bottom-0 left-0 right-0 z-50 min-h-[var(--mobile-nav-height)] border-t border-border bg-card/95 backdrop-blur-md sm:hidden">
       <div className="flex items-center justify-around py-2">
         {navItems.map((item) => {
           const { to, key, icon: Icon, label } = item;
