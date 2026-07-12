@@ -237,7 +237,7 @@ const Activity = () => {
               </h2>
               <div className="space-y-2">
                 {grouped[bucket].map((item) => (
-                  <Row key={item.id} item={item} />
+                  <Row key={item.id} item={item} clubPath={clubPath} />
                 ))}
               </div>
             </section>
