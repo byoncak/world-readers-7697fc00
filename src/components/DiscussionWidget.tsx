@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo, lazy, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useClub } from '@/contexts/ClubContext';
 import { MessageCircle, Send, X, Paperclip, ChevronDown, ChevronUp, CornerDownRight, Plus } from 'lucide-react';
 import MentionInput from './MentionInput';
 import MentionText from './MentionText';
