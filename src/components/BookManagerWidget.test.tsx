@@ -181,3 +181,50 @@ describe('BookManagerWidget club isolation', () => {
     }
   });
 });
+
+describe('BookManagerWidget Add Book autofill', () => {
+  it('persists the selected Google Books cover URL, title/author/pages, scoped to current club, and lets manual edits win after selection', async () => {
+    render(<BookManagerWidget />);
+    await waitFor(() => expect(screen.getByText('Alpha One')).toBeInTheDocument());
+
+    // Open the add-book form.
+    fireEvent.click(screen.getByRole('button', { name: /add book/i }));
+
+    // Type a query, wait for debounced result to appear.
+    const searchInput = screen.getByLabelText(/search books/i) as HTMLInputElement;
+    fireEvent.change(searchInput, { target: { value: 'selected' } });
+    const resultBtn = await screen.findByRole('option', { name: /Selected Title/i });
+
+    // Select the result.
+    fireEvent.click(resultBtn);
+
+    const titleInput = screen.getByPlaceholderText('Book title') as HTMLInputElement;
+    const authorInput = screen.getByPlaceholderText('Author') as HTMLInputElement;
+    const pagesInput = screen.getByPlaceholderText(/Total pages/i) as HTMLInputElement;
+    expect(titleInput.value).toBe('Selected Title');
+    expect(authorInput.value).toBe('Selected Author');
+    expect(pagesInput.value).toBe('321');
+
+    // Admin overrides the title manually AFTER selecting — must be preserved.
+    fireEvent.change(titleInput, { target: { value: 'My Custom Title' } });
+
+    // Submit the form.
+    calls.length = 0;
+    fireEvent.submit(titleInput.closest('form')!);
+
+    await waitFor(() => {
+      const insert = calls.find((c) => c.op === 'insert');
+      expect(insert, 'insert should have run').toBeTruthy();
+      const p = insert!.payload as Record<string, unknown>;
+      expect(p.club_id).toBe('club-A');
+      expect(p.title).toBe('My Custom Title'); // manual override wins
+      expect(p.author).toBe('Selected Author');
+      expect(p.total_pages).toBe(321);
+      // Cover URL from search is persisted to the same column book cards consume.
+      expect(p.cover_url).toBe('https://covers.example.com/selected-M.jpg');
+      expect(String(p.cover_url)).toMatch(/^https:\/\//);
+      expect(p.status).toBe('upcoming');
+    });
+  });
+});
+
