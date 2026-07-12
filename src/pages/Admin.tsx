@@ -4,12 +4,14 @@ import { useClub } from '@/contexts/ClubContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Check, ChevronDown } from 'lucide-react';
 import {
   Calendar,
   Megaphone,
