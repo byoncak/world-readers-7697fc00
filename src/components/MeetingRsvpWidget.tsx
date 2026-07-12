@@ -31,6 +31,7 @@ const responseConfig: Record<RsvpResponse, { label: string; emoji: string; color
 
 const MeetingRsvpWidget = () => {
   const { user } = useAuth();
+  const { clubId } = useClub();
   const { toast } = useToast();
   const [meeting, setMeeting] = useState<BookMeeting | null>(null);
   const [rsvps, setRsvps] = useState<RsvpRow[]>([]);
@@ -40,13 +41,15 @@ const MeetingRsvpWidget = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchMeeting = async () => {
+    if (!clubId) { setMeeting(null); return null; }
     const { data } = await supabase
       .from('books')
       .select('id, title, meeting_date, meeting_location')
       .eq('status', 'current')
+      .eq('club_id', clubId)
       .not('meeting_date', 'is', null)
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (data) setMeeting(data as BookMeeting);
     else setMeeting(null);
