@@ -108,13 +108,16 @@ export const usePoints = () => {
   const total = isTestUser ? 999999 : query.data?.total_points ?? 0;
   const lifetime = isTestUser ? 999999 : query.data?.lifetime_points ?? 0;
 
-  // Trigger the points-pop animation on increases (once per mount instance).
+  // Trigger the points-pop animation on true increases only.
+  // Skip while data is still loading, and skip the very first value we see
+  // for a given club (that's hydration/baseline, not an earned reward).
   useEffect(() => {
+    if (!enabled || query.isLoading || query.data === undefined) return;
     if (prev.current !== null && total > prev.current) {
       spawnPointsPop(total - prev.current);
     }
     prev.current = total;
-  }, [total]);
+  }, [total, enabled, query.isLoading, query.data]);
 
   const refetch = () => {
     if (enabled) qc.invalidateQueries({ queryKey: pointsQueryKey(user!.id, clubId!) });
