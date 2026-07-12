@@ -84,25 +84,30 @@ const BookWishlistWidget = () => {
   }, [bookQuery]);
 
   const fetchCurrentBook = async () => {
+    if (!clubId) return;
     const { data } = await supabase
       .from('books')
       .select('id')
       .eq('status', 'current')
+      .eq('club_id', clubId)
       .maybeSingle();
     setCurrentBookId(data?.id || null);
   };
 
   const fetchSuggestions = async () => {
+    if (!clubId) return;
     const { data: votes } = await supabase
       .from('book_votes')
       .select('*, profiles(display_name)')
+      .eq('club_id', clubId)
       .order('created_at', { ascending: false });
 
     if (!votes) return;
 
-    const { data: likes } = await supabase
-      .from('vote_likes')
-      .select('suggestion_id, user_id');
+    const suggestionIds = votes.map((v: any) => v.id);
+    const { data: likes } = suggestionIds.length
+      ? await supabase.from('vote_likes').select('suggestion_id, user_id').in('suggestion_id', suggestionIds)
+      : { data: [] as any[] };
 
     const enriched = votes.map((v: any) => ({
       ...v,
