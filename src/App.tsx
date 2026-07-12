@@ -41,6 +41,11 @@ const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
 import HomeRedirect from "@/components/HomeRedirect";
 import ClubGate from "@/components/ClubGate";
 
+// DEV-only: frame comparison harness. Route is not registered in production builds.
+const FramesHarness = import.meta.env.DEV
+  ? lazy(() => import("./pages/_FramesHarness"))
+  : null;
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
