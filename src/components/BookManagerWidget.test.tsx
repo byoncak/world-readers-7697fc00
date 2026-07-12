@@ -5,8 +5,24 @@
  * administered. These tests pin the boundary.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import BookManagerWidget from './BookManagerWidget';
+
+// ── Google Books search: return a canned HTTPS cover result ──────────────
+vi.mock('@/lib/googleBooks', () => ({
+  searchGoogleBooks: vi.fn(async () => [
+    {
+      title: 'Selected Title',
+      author: 'Selected Author',
+      pages: 321,
+      coverUrl: 'https://covers.example.com/selected-M.jpg',
+      year: 2020,
+      isbn: '9781111111111',
+      externalId: 'ext-1',
+    },
+  ]),
+}));
 
 // ── Club context: swappable clubId ────────────────────────────────────────
 let currentClubId: string | null = 'club-A';
