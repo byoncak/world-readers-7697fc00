@@ -77,9 +77,9 @@ describe('Admin hook order', () => {
   });
 
   it('loading → denied does not violate hook order', () => {
-    mockUseRole.mockReturnValueOnce(roleState({ loading: true }));
+    mockUseRole.mockReturnValue(roleState({ loading: true }));
     const utils = renderAdmin();
-    mockUseRole.mockReturnValueOnce(roleState());
+    mockUseRole.mockReturnValue(roleState());
     expect(() => utils.rerender(
       <MemoryRouter><Admin /></MemoryRouter>,
     )).not.toThrow();
