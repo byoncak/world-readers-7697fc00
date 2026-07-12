@@ -18,6 +18,7 @@ interface Props {
 
 const DiscussionReactions = ({ discussionId }: Props) => {
   const { user } = useAuth();
+  const { clubId } = useClub();
   const [counts, setCounts] = useState<ReactionCounts>({});
   const [showExtras, setShowExtras] = useState(false);
   const [extrasAlign, setExtrasAlign] = useState<'left' | 'right'>('right');
