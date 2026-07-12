@@ -5,6 +5,7 @@ import { Activity, MessageCircle, BookOpen, ThumbsUp, UserPlus, ChevronDown, Che
 import { formatDistanceToNow } from 'date-fns';
 import UserAvatar from '@/components/UserAvatar';
 import { LoadingBlock, ErrorBlock, EmptyBlock } from '@/components/StateBlock';
+import { useClub } from '@/contexts/ClubContext';
 
 interface FeedEvent {
   id: string;
@@ -24,6 +25,7 @@ const ICONS = {
 };
 
 const ActivityFeed = ({ defaultOpen = false }: { defaultOpen?: boolean }) => {
+  const { clubPath } = useClub();
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -156,7 +158,7 @@ const ActivityFeed = ({ defaultOpen = false }: { defaultOpen?: boolean }) => {
                   />
                   <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <span className="min-w-0 flex-1 font-body">
-                    <Link to={`/member/${ev.user_id}`} className="font-semibold text-foreground hover:underline">
+                    <Link to={clubPath(`/member/${ev.user_id}`)} className="font-semibold text-foreground hover:underline">
                       {ev.display_name}
                     </Link>{' '}
                     <span className="text-muted-foreground">{ev.description}</span>

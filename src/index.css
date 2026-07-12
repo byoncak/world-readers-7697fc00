@@ -337,9 +337,20 @@
     padding-bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
   }
 
+  /* Floating action button positioned above the mobile dock + iOS home indicator.
+     On desktop the dock is hidden, so we anchor to a comfortable viewport offset. */
+  .fab-above-nav {
+    bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px) + 14px);
+    right: 1rem;
+  }
+
   @media (min-width: 640px) {
     .mobile-nav-offset {
       padding-bottom: 0;
+    }
+    .fab-above-nav {
+      bottom: 1.5rem;
+      right: 1.5rem;
     }
   }
 }

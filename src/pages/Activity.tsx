@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useActivityFeed, type ActivityItem } from '@/hooks/useActivityFeed';
+import { activityDestination } from '@/lib/activityDestination';
+import { useClub } from '@/contexts/ClubContext';
 import PollWidget from '@/components/PollWidget';
 import ActivityReactions from '@/components/ActivityReactions';
 import { supabase } from '@/integrations/supabase/client';
@@ -121,9 +123,10 @@ function ItemBody({ item }: { item: ActivityItem }) {
   }
 }
 
-function Row({ item }: { item: ActivityItem }) {
+function Row({ item, clubPath }: { item: ActivityItem; clubPath: (p?: string) => string }) {
   const meta = kindMeta[item.kind];
   const Icon = meta.icon;
+  const to = activityDestination(item, clubPath);
   const inner = (
     <article className="flex gap-3 rounded-2xl border border-border/60 bg-card/60 p-3 transition-colors hover:bg-card">
       {item.userId ? (
@@ -144,14 +147,18 @@ function Row({ item }: { item: ActivityItem }) {
           </time>
         </div>
         <ItemBody item={item} />
-        <div className="pt-1">
+        <div
+          className="pt-1"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
           <ActivityReactions activityId={item.id} />
         </div>
       </div>
     </article>
   );
-  return item.link ? (
-    <Link to={item.link} className="block">
+  return to ? (
+    <Link to={to} className="block">
       {inner}
     </Link>
   ) : (
@@ -161,6 +168,7 @@ function Row({ item }: { item: ActivityItem }) {
 
 const Activity = () => {
   const { data, isLoading, isError } = useActivityFeed();
+  const { clubPath } = useClub();
   const [searchParams] = useSearchParams();
   const [pollSheetOpen, setPollSheetOpen] = useState(false);
   const [activePollCount, setActivePollCount] = useState(0);
@@ -229,7 +237,7 @@ const Activity = () => {
               </h2>
               <div className="space-y-2">
                 {grouped[bucket].map((item) => (
-                  <Row key={item.id} item={item} />
+                  <Row key={item.id} item={item} clubPath={clubPath} />
                 ))}
               </div>
             </section>

@@ -577,7 +577,7 @@ const DiscussionWidget = () => {
       {showFAB && (
         <button
           onClick={handleFABClick}
-          className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full bg-secondary text-secondary-foreground shadow-lg flex items-center justify-center hover:scale-105 transition-transform active:scale-95"
+          className="fab-above-nav fixed z-40 h-12 w-12 rounded-full bg-secondary text-secondary-foreground shadow-lg flex items-center justify-center hover:scale-105 transition-transform active:scale-95"
           title="New post"
         >
           <Plus className="h-6 w-6" />
