@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useClub } from '@/contexts/ClubContext';
 import { ThumbsUp, ThumbsDown, Heart } from 'lucide-react';
 
 
