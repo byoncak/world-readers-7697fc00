@@ -250,6 +250,7 @@ const MemberProfile = () => {
       from_user_id: user.id, to_user_id: userId,
       title: recTitle.trim(), author: recAuthor.trim(),
       message: recMessage.trim() || null,
+      club_id: clubId,
     });
     if (error) { toast.error('Failed to send recommendation'); }
     else {
