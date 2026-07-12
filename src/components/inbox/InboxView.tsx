@@ -10,6 +10,7 @@ const GiphyPicker = lazy(() => import('@/components/GiphyPicker'));
 import MentionInput from '@/components/MentionInput';
 import MentionText from '@/components/MentionText';
 import StyledName from '@/components/StyledName';
+import MobileFab from '@/components/MobileFab';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -584,7 +585,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   }
 
   return (
-    <div className={`relative ${embedded ? 'pt-2' : 'mx-auto max-w-2xl px-4 py-6'}`}>
+    <div className={`mobile-fab-content-offset relative ${embedded ? 'pt-2' : 'mx-auto max-w-2xl px-4 py-6'}`}>
       {!embedded && (
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -595,14 +596,14 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       )}
 
       {/* FAB */}
-      <button
+      <MobileFab
         onClick={openNewMessageDialog}
-        className="fab-above-nav fixed z-40 h-12 w-12 rounded-full bg-secondary text-secondary-foreground shadow-lg flex items-center justify-center hover:scale-105 transition-transform active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         title="New message"
-        aria-label="Start a new message"
+        label="Start a new message"
+        hidden={showNewMsg || showMembers || !!activeConvo}
       >
         <PenSquare className="h-5 w-5" aria-hidden="true" />
-      </button>
+      </MobileFab>
 
 
       {fetching ? (
