@@ -8,8 +8,8 @@
  * "Rendered more hooks than during the previous render." on any recurrence.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, fireEvent, within } from '@testing-library/react';
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Admin from './Admin';
 
 const mockUseAuth = vi.fn();
@@ -17,12 +17,14 @@ const mockUseRole = vi.fn();
 
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => mockUseAuth() }));
 vi.mock('@/hooks/useRole', () => ({ useRole: () => mockUseRole() }));
+
+let clubMock: any = {
+  club: { id: 'club-1', name: 'Test Club' },
+  clubId: 'club-1',
+  memberships: [{ club_id: 'club-1', role: 'admin', club: { id: 'club-1', name: 'Test Club' } }],
+};
 vi.mock('@/contexts/ClubContext', () => ({
-  useClub: () => ({
-    club: { id: 'club-1', name: 'Test Club' },
-    clubId: 'club-1',
-    memberships: [{ club_id: 'club-1', role: 'admin', club: { id: 'club-1', name: 'Test Club' } }],
-  }),
+  useClub: () => clubMock,
 }));
 
 // Stub every child card — we only care about the Admin shell's hook order.
@@ -98,5 +100,75 @@ describe('Admin hook order', () => {
     expect(() => utils.rerender(
       <MemoryRouter><Admin /></MemoryRouter>,
     )).not.toThrow();
+  });
+});
+
+describe('Admin club switcher', () => {
+  const restoreClub = { ...clubMock };
+  beforeEach(() => {
+    Object.assign(clubMock, restoreClub);
+    mockUseRole.mockReturnValue(roleState({ canManageCurrentClub: true }));
+  });
+
+  it('excludes clubs where the user is only a member', () => {
+    clubMock = {
+      club: { id: 'club-A', name: 'Alpha' },
+      clubId: 'club-A',
+      memberships: [
+        { club_id: 'club-A', role: 'owner', club: { id: 'club-A', name: 'Alpha' } },
+        { club_id: 'club-B', role: 'admin', club: { id: 'club-B', name: 'Beta' } },
+        { club_id: 'club-C', role: 'member', club: { id: 'club-C', name: 'Gamma' } },
+      ],
+    };
+    const { getByLabelText, queryByText, getAllByText } = render(
+      <MemoryRouter><Admin /></MemoryRouter>,
+    );
+    // Native <select> is rendered under the accessible label; assert only
+    // Alpha + Beta appear as options, never Gamma.
+    const trigger = getByLabelText('Switch club to manage');
+    fireEvent.click(trigger);
+    expect(getAllByText('Alpha').length).toBeGreaterThan(0);
+    expect(getAllByText('Beta').length).toBeGreaterThan(0);
+    expect(queryByText('Gamma')).toBeNull();
+  });
+
+  it('is hidden when the user administers only one club', () => {
+    clubMock = {
+      club: { id: 'club-A', name: 'Alpha' },
+      clubId: 'club-A',
+      memberships: [
+        { club_id: 'club-A', role: 'admin', club: { id: 'club-A', name: 'Alpha' } },
+        { club_id: 'club-C', role: 'member', club: { id: 'club-C', name: 'Gamma' } },
+      ],
+    };
+    const { queryByLabelText } = render(
+      <MemoryRouter><Admin /></MemoryRouter>,
+    );
+    expect(queryByLabelText('Switch club to manage')).toBeNull();
+  });
+
+  it('navigates to /c/:id/admin when a different club is selected', () => {
+    clubMock = {
+      club: { id: 'club-A', name: 'Alpha' },
+      clubId: 'club-A',
+      memberships: [
+        { club_id: 'club-A', role: 'admin', club: { id: 'club-A', name: 'Alpha' } },
+        { club_id: 'club-B', role: 'admin', club: { id: 'club-B', name: 'Beta' } },
+      ],
+    };
+    let path = '';
+    const Probe = () => { path = useLocation().pathname; return null; };
+    const { getByLabelText, getByText } = render(
+      <MemoryRouter initialEntries={['/c/club-A/admin']}>
+        <Routes>
+          <Route path="/c/:clubId/admin" element={<><Admin /><Probe /></>} />
+          <Route path="*" element={<Probe />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    fireEvent.click(getByLabelText('Switch club to manage'));
+    // Radix Select renders options in a portal; find and click Beta.
+    fireEvent.click(getByText('Beta'));
+    expect(path).toBe('/c/club-B/admin');
   });
 });
