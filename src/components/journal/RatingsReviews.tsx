@@ -132,9 +132,10 @@ const RatingsReviews = () => {
       await supabase.from('book_ratings').insert({
         user_id: user.id,
         book_id: selectedBook,
+        club_id: clubId,
         rating: myRating,
         review: myReview.trim() || null,
-      });
+      } as any);
     }
     setEditing(false);
     // Refresh
