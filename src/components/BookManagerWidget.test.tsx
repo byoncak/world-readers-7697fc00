@@ -34,8 +34,7 @@ const DATASETS: Record<string, any[]> = {
     { id: 'b1', club_id: 'club-B', title: 'Beta One', author: 'BX', status: 'upcoming', total_pages: 50, cover_url: null, spine_art_url: null, pdf_url: null },
   ],
 };
-
-const channelSpy = vi.fn();
+const { channelSpy } = vi.hoisted(() => ({ channelSpy: vi.fn() }));
 
 function makeChain(op: Call['op']) {
   const filters: Record<string, unknown> = {};
