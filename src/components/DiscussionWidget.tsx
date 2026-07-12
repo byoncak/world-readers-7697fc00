@@ -400,6 +400,7 @@ const DiscussionWidget = () => {
     await supabase.from('discussions').insert({
       book_id: currentBookId,
       user_id: user.id,
+      club_id: clubId,
       message: newMessage.trim() || (finalImageUrl ? '' : ''),
       parent_id: replyTo?.id ?? null,
       image_url: finalImageUrl,
