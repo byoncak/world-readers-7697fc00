@@ -71,6 +71,7 @@ vi.mock('@/integrations/supabase/client', () => ({
       insert: (p: Record<string, unknown>) => {
         const c: any = makeChain('insert');
         (c as any).__payload = p;
+        calls.push({ op: 'insert', filters: {}, payload: p });
         return c;
       },
       delete: () => makeChain('delete'),
