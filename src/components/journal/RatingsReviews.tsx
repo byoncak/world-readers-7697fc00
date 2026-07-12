@@ -47,6 +47,7 @@ const StarRating = ({ value, onChange, readonly = false }: { value: number; onCh
 
 const RatingsReviews = () => {
   const { user } = useAuth();
+  const { clubId } = useClub();
   const [completedBooks, setCompletedBooks] = useState<Book[]>([]);
   const [selectedBook, setSelectedBook] = useState<string | null>(null);
   const [ratings, setRatings] = useState<Rating[]>([]);
@@ -58,18 +59,22 @@ const RatingsReviews = () => {
   const [error, setError] = useState(false);
 
   const loadBooks = useCallback(async () => {
+    setCompletedBooks([]);
+    setSelectedBook(null);
+    if (!clubId) { setLoading(false); return; }
     setLoading(true);
     setError(false);
     const { data, error: err } = await supabase
       .from('books')
       .select('id, title, author, cover_url')
       .eq('status', 'completed')
+      .eq('club_id', clubId)
       .order('meeting_date', { ascending: false, nullsFirst: false });
     if (err) { setError(true); setLoading(false); return; }
     setCompletedBooks(data || []);
     if (data?.length) setSelectedBook(data[0].id);
     setLoading(false);
-  }, []);
+  }, [clubId]);
 
   useEffect(() => { loadBooks(); }, [loadBooks]);
 
