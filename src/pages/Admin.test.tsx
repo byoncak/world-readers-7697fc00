@@ -18,7 +18,11 @@ const mockUseRole = vi.fn();
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => mockUseAuth() }));
 vi.mock('@/hooks/useRole', () => ({ useRole: () => mockUseRole() }));
 vi.mock('@/contexts/ClubContext', () => ({
-  useClub: () => ({ club: { id: 'club-1', name: 'Test Club' }, clubId: 'club-1' }),
+  useClub: () => ({
+    club: { id: 'club-1', name: 'Test Club' },
+    clubId: 'club-1',
+    memberships: [{ club_id: 'club-1', role: 'admin', club: { id: 'club-1', name: 'Test Club' } }],
+  }),
 }));
 
 // Stub every child card — we only care about the Admin shell's hook order.
