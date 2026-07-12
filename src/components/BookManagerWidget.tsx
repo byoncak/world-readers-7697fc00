@@ -361,44 +361,177 @@ const BookManagerWidget = () => {
       {showForm && (
         <form
           onSubmit={addBook}
-          className="mb-5 space-y-2 rounded-xl p-4"
+          className="mb-5 space-y-3 rounded-xl p-4"
           style={{ background: 'hsl(var(--peach) / 0.5)' }}
         >
           <p className="text-xs text-muted-foreground font-body">
-            Meeting date &amp; location live in Meetings &amp; polls.
+            Search by title, author, or ISBN — or{' '}
+            <button
+              type="button"
+              onClick={() => setManualMode((m) => !m)}
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              {manualMode ? 'search instead' : 'enter manually'}
+            </button>
+            .
           </p>
+
+          {!manualMode && (
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <input
+                  type="search"
+                  value={bookQuery}
+                  onChange={(e) => setBookQuery(e.target.value)}
+                  placeholder="Search books"
+                  className="cozy-input w-full pl-9 min-h-[44px]"
+                  aria-label="Search books by title, author, or ISBN"
+                  autoComplete="off"
+                />
+                {searching && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" aria-hidden="true" />
+                )}
+              </div>
+              {bookQuery.trim().length >= 2 && (
+                <div
+                  className="max-h-[240px] overflow-y-auto overscroll-contain rounded-lg border border-border bg-card"
+                  role="listbox"
+                  aria-label="Book search results"
+                >
+                  {searching && !bookResults.length ? (
+                    <p className="p-3 text-xs text-muted-foreground font-body">Searching…</p>
+                  ) : searchError ? (
+                    <p className="p-3 text-xs text-muted-foreground font-body">
+                      Couldn’t reach the book database. Try again or enter manually.
+                    </p>
+                  ) : bookResults.length === 0 ? (
+                    <p className="p-3 text-xs text-muted-foreground font-body">
+                      No results. Refine your search or enter manually.
+                    </p>
+                  ) : (
+                    bookResults.map((r, i) => (
+                      <button
+                        key={`${r.externalId || r.title}-${i}`}
+                        type="button"
+                        onClick={() => applyResult(r)}
+                        className="flex w-full items-start gap-2.5 border-b border-border/50 p-2 text-left last:border-b-0 hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none min-h-[44px]"
+                        role="option"
+                      >
+                        <div className="h-12 w-8 shrink-0 overflow-hidden rounded bg-muted flex items-center justify-center">
+                          {r.coverUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={r.coverUrl}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                              onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden'; }}
+                            />
+                          ) : (
+                            <BookOpen className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-body font-semibold truncate">{r.title}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {r.author || 'Unknown author'}
+                            {r.year ? ` · ${r.year}` : ''}
+                            {r.pages ? ` · ${r.pages} pp` : ''}
+                          </p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-start gap-3">
+            <div className="h-16 w-12 shrink-0 overflow-hidden rounded border border-border bg-muted flex items-center justify-center">
+              {coverFile ? (
+                <span className="text-[10px] text-muted-foreground px-1 text-center">Uploaded</span>
+              ) : coverUrl && !coverFailed ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={coverUrl}
+                  alt="Selected cover preview"
+                  className="h-full w-full object-cover"
+                  onError={() => setCoverFailed(true)}
+                />
+              ) : (
+                <ImagePlus className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0 space-y-1">
+              <p className="text-[11px] text-muted-foreground font-body">
+                {coverFile
+                  ? `Uploading: ${coverFile.name}`
+                  : coverUrl && !coverFailed
+                    ? 'Cover from search will be saved.'
+                    : 'No cover selected yet.'}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <label className="cursor-pointer rounded-lg bg-muted px-2 py-1 text-[11px] font-body font-semibold text-muted-foreground hover:bg-muted/80 min-h-[32px] inline-flex items-center gap-1">
+                  <ImagePlus className="h-3 w-3" /> Upload
+                  <input
+                    ref={coverInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] || null;
+                      setCoverFile(f);
+                      if (f) setCoverUrl(null);
+                    }}
+                    className="hidden"
+                  />
+                </label>
+                {(coverFile || (coverUrl && !coverFailed)) && (
+                  <button
+                    type="button"
+                    onClick={() => { setCoverFile(null); setCoverUrl(null); setCoverFailed(false); }}
+                    className="rounded-lg px-2 py-1 text-[11px] font-body text-muted-foreground hover:bg-muted/60 min-h-[32px]"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
           <input
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => { setTitle(e.target.value); setTouched((t) => ({ ...t, title: true })); }}
             placeholder="Book title"
-            className="cozy-input w-full"
+            className="cozy-input w-full min-h-[44px]"
             required
           />
           <input
             type="text"
             value={author}
-            onChange={(e) => setAuthor(e.target.value)}
+            onChange={(e) => { setAuthor(e.target.value); setTouched((t) => ({ ...t, author: true })); }}
             placeholder="Author"
-            className="cozy-input w-full"
+            className="cozy-input w-full min-h-[44px]"
             required
           />
           <input
             type="number"
             value={totalPages}
-            onChange={(e) => setTotalPages(e.target.value)}
+            onChange={(e) => { setTotalPages(e.target.value); setTouched((t) => ({ ...t, pages: true })); }}
             placeholder="Total pages (optional)"
-            className="cozy-input w-full"
+            className="cozy-input w-full min-h-[44px]"
           />
           <input
             type="url"
             value={pdfUrl}
             onChange={(e) => setPdfUrl(e.target.value)}
             placeholder="PDF link (optional)"
-            className="cozy-input w-full"
+            className="cozy-input w-full min-h-[44px]"
             pattern="https?://.*"
           />
-          <label className="flex items-center gap-2 cursor-pointer cozy-input w-full text-sm text-muted-foreground">
+          <label className="flex items-center gap-2 cursor-pointer cozy-input w-full text-sm text-muted-foreground min-h-[44px]">
             <ImagePlus className="h-4 w-4" />
             <span className="truncate">{spineFile ? spineFile.name : 'Spine art (optional)'}</span>
             <input
@@ -408,35 +541,30 @@ const BookManagerWidget = () => {
               className="hidden"
             />
           </label>
-          <label className="flex items-center gap-2 cursor-pointer cozy-input w-full text-sm text-muted-foreground">
-            <ImagePlus className="h-4 w-4" />
-            <span className="truncate">{coverFile ? coverFile.name : 'Cover art (optional)'}</span>
-            <input
-              ref={coverInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(e) => setCoverFile(e.target.files?.[0] || null)}
-              className="hidden"
-            />
-          </label>
+
+          <p className="text-[11px] text-muted-foreground font-body">
+            Meeting date &amp; location live in Meetings &amp; polls.
+          </p>
+
           <div className="flex gap-2 pt-1">
             <button
               type="button"
-              onClick={() => setShowForm(false)}
-              className="cozy-btn-ghost flex-1 text-sm"
+              onClick={() => { setShowForm(false); resetForm(); }}
+              className="cozy-btn-ghost flex-1 text-sm min-h-[44px]"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="cozy-btn-primary flex-1 text-sm"
+              className="cozy-btn-primary flex-1 text-sm min-h-[44px]"
             >
               {saving ? 'Adding…' : 'Add book'}
             </button>
           </div>
         </form>
       )}
+
 
       <div className="space-y-3">
         {loading ? (
