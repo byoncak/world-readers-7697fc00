@@ -304,7 +304,7 @@ const BookManagerWidget = () => {
         </form>
       )}
 
-      <div className="max-h-96 space-y-3 overflow-y-auto">
+      <div className="space-y-3">
         {books.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground font-body">
             No books added yet. Add your first one! 📖
