@@ -1,13 +1,12 @@
-import { memo, type ReactNode } from 'react';
+import { memo, useMemo, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 interface ElectricBorderProps {
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
-  /** Variant key — controls the two-color glow palette */
   variantKey?: string;
-  /** Preview/grid mode: drop secondary spark & branch flicker so many cards stay cheap. */
+  /** Preview/grid mode: drop secondary wisp & fast spark. */
   preview?: boolean;
 }
 
@@ -18,126 +17,190 @@ const sizeClasses = {
 } as const;
 
 const VARIANT_COLORS: Record<string, { base: string; spark: string }> = {
-  ember:     { base: '#ff6600', spark: '#ffcc00' },
-  voltage:   { base: '#3b82f6', spark: '#22d3ee' },
-  toxic:     { base: '#32cd32', spark: '#adff2f' },
+  ember: { base: '#ff6600', spark: '#ffcc00' },
+  voltage: { base: '#3b82f6', spark: '#22d3ee' },
+  toxic: { base: '#32cd32', spark: '#adff2f' },
   shockwave: { base: '#ff1493', spark: '#ff69b4' },
-  arcane:    { base: '#6a1bbd', spark: '#c8a2ff' },
+  arcane: { base: '#6a1bbd', spark: '#c8a2ff' },
 };
 
-// Pre-computed irregular polygon around a circle (radii 47..54). Static string
-// → no per-instance JS. viewBox 0..100 with overflow visible so spikes protrude.
-const JAGGED_PATH =
-  'M101.45,50.00 L96.68,58.23 L98.32,67.59 L90.88,73.60 L88.03,81.91 L84.36,90.94 L75.23,93.69 L67.16,97.15 L59.62,104.57 L50.00,100.30 L41.54,97.96 L33.59,95.10 L24.74,93.75 L16.82,89.54 L13.13,80.94 L7.26,74.68 L2.81,67.18 L2.09,58.45 L-0.84,50.00 L0.60,41.29 L1.31,32.28 L7.93,25.71 L13.50,19.37 L15.58,8.98 L26.39,9.11 L32.49,1.88 L41.00,-1.03 L50.00,-0.82 L58.72,0.57 L67.66,1.49 L74.80,7.04 L80.43,13.74 L88.73,17.50 L94.62,24.24 L96.16,33.20 L96.41,41.82 Z';
+// Perimeter of the r=48 circle in SVG coords (viewBox 0..100). We chop it into
+// SEPARATED bright arcs (not a spiky polygon crown) using stroke-dasharray so
+// electricity reads as several disconnected discharges wrapping the avatar.
+const CIRC = 2 * Math.PI * 48;
 
-// Short branches (crackling protrusions) at fixed angles
-const BRANCHES: Array<[number, number, number, number]> = [
-  [95, 30, 104, 22],
-  [12, 20, 3, 12],
-  [90, 80, 100, 90],
-  [20, 88, 8, 98],
-  [50, -1, 50, -8],
-  [50, 101, 50, 108],
+// Short outward branches — a few asymmetric bolts that stick out at fixed
+// angles. Kept small so they never crop the viewBox.
+type Branch = { a: number; length: number; kink: number };
+const BRANCHES: Branch[] = [
+  { a: -70, length: 6, kink: 2 },
+  { a: 25, length: 5, kink: -1.5 },
+  { a: 118, length: 7, kink: 2.5 },
+  { a: 210, length: 5, kink: -2 },
+  { a: 300, length: 6, kink: 1.5 },
 ];
 
-const ElectricBorder = memo(({ children, size = 'sm', className, variantKey, preview }: ElectricBorderProps) => {
-  const palette = VARIANT_COLORS[variantKey || ''] || VARIANT_COLORS.ember;
+const branchPath = (b: Branch) => {
+  const r0 = 48;
+  const rad = (b.a * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const x0 = 50 + cos * r0;
+  const y0 = 50 + sin * r0;
+  // midpoint kinked perpendicular to the radial to feel like a bolt.
+  const perpX = -sin;
+  const perpY = cos;
+  const midR = r0 + b.length * 0.55;
+  const xm = 50 + cos * midR + perpX * b.kink;
+  const ym = 50 + sin * midR + perpY * b.kink;
+  const xe = 50 + cos * (r0 + b.length);
+  const ye = 50 + sin * (r0 + b.length);
+  return `M${x0.toFixed(2)},${y0.toFixed(2)} L${xm.toFixed(2)},${ym.toFixed(2)} L${xe.toFixed(2)},${ye.toFixed(2)}`;
+};
 
-  return (
-    <div className={cn('relative shrink-0 rounded-full', sizeClasses[size], className)}>
-      {/* Ambient outer glow — one restrained radial layer, flicker via opacity. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-[-6%] rounded-full electric-flicker"
-        style={{
-          background: `radial-gradient(circle, ${palette.base}55 40%, transparent 72%)`,
-          zIndex: 0,
-        }}
-      />
+const ElectricBorder = memo(
+  ({ children, size = 'sm', className, variantKey, preview }: ElectricBorderProps) => {
+    const palette = VARIANT_COLORS[variantKey || ''] || VARIANT_COLORS.ember;
+    const filterId = useMemo(
+      () => `el-glow-${palette.base.replace('#', '')}`,
+      [palette.base],
+    );
 
-      {/* Irregular energized outline. SVG lives on a slightly enlarged square
-          so the spikes at 50,-1 etc. don't clip. */}
-      <svg
-        aria-hidden
-        viewBox="-6 -6 112 112"
-        className="pointer-events-none absolute inset-[-6%] h-[112%] w-[112%]"
-        style={{ overflow: 'visible', zIndex: 1 }}
-      >
-        <defs>
-          <filter id={`el-glow-${palette.base.replace('#', '')}`} x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="1.2" />
-          </filter>
-        </defs>
-        {/* Jagged base — slowly rotates so spikes never sit still, flicker on opacity. */}
-        <g className="electric-flicker avatar-frame-ring origin-center" style={{ ['--frame-speed' as string]: '9s', transformOrigin: '50px 50px' }}>
-          <path
-            d={JAGGED_PATH}
+    // Separated bright arcs: three long-ish dashes with sizeable gaps.
+    // Sum of on+off segments equals CIRC exactly (rounded).
+    const arcSegments = `${CIRC * 0.18} ${CIRC * 0.15} ${CIRC * 0.14} ${CIRC * 0.13} ${CIRC * 0.11} ${CIRC * 0.29}`;
+
+    return (
+      <div className={cn('relative shrink-0 rounded-full', sizeClasses[size], className)}>
+        {/* Restrained radial glow with irregular flicker. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-[-6%] rounded-full electric-flicker"
+          style={{
+            background: `radial-gradient(circle, ${palette.base}55 40%, transparent 72%)`,
+            zIndex: 0,
+          }}
+        />
+
+        <svg
+          aria-hidden
+          viewBox="-8 -8 116 116"
+          className="pointer-events-none absolute inset-[-8%] h-[116%] w-[116%]"
+          style={{ overflow: 'visible', zIndex: 1 }}
+        >
+          <defs>
+            <filter id={filterId} x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="1.1" />
+            </filter>
+          </defs>
+
+          {/* Stable base energized outline — thin, dim, always visible (no
+              rotation) so the ring reads as anchored. */}
+          <circle
+            cx={50}
+            cy={50}
+            r={48}
             fill="none"
             stroke={palette.base}
-            strokeWidth={2}
-            strokeLinejoin="round"
-            filter={`url(#el-glow-${palette.base.replace('#', '')})`}
-            opacity={0.85}
+            strokeWidth={1.2}
+            opacity={0.55}
           />
-          <path
-            d={JAGGED_PATH}
-            fill="none"
-            stroke={palette.spark}
-            strokeWidth={0.9}
-            strokeLinejoin="round"
-            opacity={0.9}
-          />
-          {/* Crackling short branches protruding just outside the ring */}
-          {BRANCHES.map((b, i) => (
-            <line
-              key={i}
-              x1={b[0]} y1={b[1]} x2={b[2]} y2={b[3]}
-              stroke={palette.spark}
-              strokeWidth={1}
-              strokeLinecap="round"
-              opacity={0.85}
-            />
-          ))}
-        </g>
 
-        {/* Fast bright spark racing the perimeter (smooth circle w/ dasharray). */}
-        {!preview && (
-          <g className="avatar-frame-ring" style={{ ['--frame-speed' as string]: '1.6s', transformOrigin: '50px 50px' }}>
+          {/* Separated bright arcs — SLOWLY rotates & flickers. Feels like
+              disconnected discharges wrapping the perimeter. */}
+          <g
+            className="avatar-frame-ring electric-flicker origin-center"
+            style={{ ['--frame-speed' as string]: '11s', transformOrigin: '50px 50px' }}
+          >
             <circle
-              cx={50} cy={50} r={50}
+              cx={50}
+              cy={50}
+              r={48}
+              fill="none"
+              stroke={palette.base}
+              strokeWidth={2.4}
+              strokeLinecap="round"
+              strokeDasharray={arcSegments}
+              filter={`url(#${filterId})`}
+              opacity={0.9}
+            />
+            <circle
+              cx={50}
+              cy={50}
+              r={48}
               fill="none"
               stroke={palette.spark}
-              strokeWidth={2.2}
+              strokeWidth={1.1}
               strokeLinecap="round"
-              strokeDasharray="10 304"
-              style={{ filter: `drop-shadow(0 0 3px ${palette.spark})` }}
+              strokeDasharray={arcSegments}
+              opacity={0.95}
             />
           </g>
-        )}
 
-        {/* Second dimmer counter-rotating dash to add chaos (skipped in preview) */}
-        {!preview && (
-          <g className="avatar-frame-ring-reverse" style={{ ['--frame-speed' as string]: '2.6s', transformOrigin: '50px 50px' }}>
-            <circle
-              cx={50} cy={50} r={50}
-              fill="none"
-              stroke={palette.spark}
-              strokeWidth={1.2}
-              strokeLinecap="round"
-              strokeDasharray="4 158 6 146"
-              opacity={0.55}
-            />
+          {/* Short branches — sit at fixed angles, flicker with the ring. */}
+          <g className="electric-flicker" style={{ animationDuration: '1.8s' }}>
+            {(size === 'sm' ? BRANCHES.slice(0, 3) : BRANCHES).map((b, i) => (
+              <path
+                key={i}
+                d={branchPath(b)}
+                stroke={palette.spark}
+                strokeWidth={1.1}
+                strokeLinecap="round"
+                fill="none"
+                opacity={0.85}
+                style={{ filter: `drop-shadow(0 0 1.5px ${palette.spark})` }}
+              />
+            ))}
           </g>
-        )}
-      </svg>
 
-      {/* Avatar sits inset inward so ring reads as a band. */}
-      <div className="absolute inset-[9%] rounded-full overflow-hidden bg-muted z-[2]">
-        {children}
+          {/* Fast bright spark racing the perimeter. */}
+          {!preview && (
+            <g
+              className="avatar-frame-ring"
+              style={{ ['--frame-speed' as string]: '1.9s', transformOrigin: '50px 50px' }}
+            >
+              <circle
+                cx={50}
+                cy={50}
+                r={48}
+                fill="none"
+                stroke={palette.spark}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeDasharray={`${CIRC * 0.03} ${CIRC * 0.97}`}
+                style={{ filter: `drop-shadow(0 0 3px ${palette.spark})` }}
+              />
+            </g>
+          )}
+
+          {/* Faint second outer wisp — only at md/lg and not preview. */}
+          {!preview && size !== 'sm' && (
+            <g
+              className="avatar-frame-ring-reverse"
+              style={{ ['--frame-speed' as string]: '4.2s', transformOrigin: '50px 50px' }}
+            >
+              <circle
+                cx={50}
+                cy={50}
+                r={52}
+                fill="none"
+                stroke={palette.spark}
+                strokeWidth={0.8}
+                strokeLinecap="round"
+                strokeDasharray={`${CIRC * 0.02} ${CIRC * 0.15} ${CIRC * 0.03} ${CIRC * 0.8}`}
+                opacity={0.5}
+              />
+            </g>
+          )}
+        </svg>
+
+        <div className="absolute inset-[9%] rounded-full overflow-hidden bg-muted z-[2]">
+          {children}
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);
 
 ElectricBorder.displayName = 'ElectricBorder';
 export default ElectricBorder;
