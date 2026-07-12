@@ -5,7 +5,7 @@ interface ChromeBorderProps {
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
-  /** Preview/grid mode — drop the counter-rotating specular sweep. */
+  /** Preview/grid mode — drop the second specular sweep to stay cheap. */
   preview?: boolean;
 }
 
@@ -15,15 +15,15 @@ const sizeClasses = {
   lg: 'h-20 w-20',
 } as const;
 
-// Brushed-silver conic — many alternating value stops so highlights read as
-// individual bevel bands rather than one smooth band.
-const CHROME_BEVEL =
+// Rich alternating brushed-silver conic: many stops so bands read as distinct
+// bevel highlights rather than one smooth ring.
+const CHROME_FACE =
   'conic-gradient(from 0deg,' +
-  '#f5f7fa, #b6bcc9, #e8eaf0, #8a91a1, #dfe2ea, #a2a8b7, #f5f7fa,' +
-  '#7d8493, #d5d9e2, #9aa0ad, #eef0f5, #858c9b, #f5f7fa)';
+  '#f6f8fb, #b4bac8, #e6e9ef, #8b91a1, #dfe2ea, #a1a7b6, #f6f8fb,' +
+  '#7c8393, #d4d8e1, #99a0ad, #edeff4, #848b9a, #f6f8fb)';
 
-// Two independent specular sweep arcs — different widths & start angles so
-// they rarely align and highlights appear to travel non-uniformly.
+// Single narrow bright specular sweep (used twice with different angles/speeds
+// so the highlights travel non-uniformly across the ring).
 const CHROME_SWEEP_A =
   'conic-gradient(from 0deg, transparent 0deg, transparent 155deg, rgba(255,255,255,0.95) 178deg, rgba(255,255,255,0.55) 195deg, transparent 220deg, transparent 360deg)';
 const CHROME_SWEEP_B =
@@ -32,66 +32,84 @@ const CHROME_SWEEP_B =
 const ChromeBorder = memo(({ children, size = 'sm', className, preview }: ChromeBorderProps) => {
   return (
     <div className={cn('relative shrink-0 rounded-full', sizeClasses[size], className)}>
-      {/* Base brushed bevel — rotates slowly so bevel bands drift around. */}
+      {/* Dark outer hairline — sells the metal's outer edge. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 rounded-full avatar-frame-ring"
+        className="pointer-events-none absolute inset-0 rounded-full"
         style={{
-          background: CHROME_BEVEL,
-          boxShadow: '0 0 0 1px rgba(0,0,0,0.32), 0 2px 6px -1px rgba(60,70,90,0.28)',
-          ['--frame-speed' as string]: '18s',
+          boxShadow: '0 0 0 1px rgba(20,25,35,0.7), 0 2px 8px -1px rgba(50,60,80,0.35)',
           zIndex: 0,
         }}
       />
 
-      {/* Slow "morph" layer — same bevel, opposite direction, slightly scaled
-          & translated. Where the two overlap, highlight positions drift and
-          appear non-uniform instead of a single rigid rotation. */}
+      {/* Broad metallic face — many alternating silver bands. Slow rotation
+          gives brushed-metal drift without rigid feel. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-[-4%] rounded-full avatar-frame-ring-reverse chrome-morph"
+        className="pointer-events-none absolute inset-[1px] rounded-full avatar-frame-ring"
         style={{
-          background: CHROME_BEVEL,
-          mixBlendMode: 'overlay',
-          opacity: 0.85,
-          ['--frame-speed' as string]: '11s',
+          background: CHROME_FACE,
+          ['--frame-speed' as string]: '20s',
           zIndex: 1,
         }}
       />
 
-      {/* Primary bright specular sweep */}
+      {/* Counter-rotating morph layer — same face, opposite direction, slight
+          scale breathe. Where the two overlap, highlights appear to LIQUIDLY
+          shift around the ring instead of one rigid rotation. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 rounded-full avatar-frame-ring"
+        className="pointer-events-none absolute inset-[-3%] rounded-full avatar-frame-ring-reverse chrome-morph"
         style={{
-          background: CHROME_SWEEP_A,
-          filter: 'blur(1.1px)',
-          mixBlendMode: 'screen',
-          ['--frame-speed' as string]: '3.2s',
+          background: CHROME_FACE,
+          mixBlendMode: 'overlay',
+          opacity: 0.75,
+          ['--frame-speed' as string]: '13s',
           zIndex: 2,
         }}
       />
 
-      {/* Counter-rotating dimmer secondary sweep — dropped in preview mode */}
+      {/* Primary bright specular sweep — fast enough to catch the eye. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-[1px] rounded-full avatar-frame-ring"
+        style={{
+          background: CHROME_SWEEP_A,
+          mixBlendMode: 'screen',
+          ['--frame-speed' as string]: '3.4s',
+          zIndex: 3,
+        }}
+      />
+
+      {/* Counter-rotating dimmer secondary sweep — dropped in preview mode. */}
       {!preview && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-full avatar-frame-ring-reverse"
+          className="pointer-events-none absolute inset-[1px] rounded-full avatar-frame-ring-reverse"
           style={{
             background: CHROME_SWEEP_B,
-            filter: 'blur(0.8px)',
             mixBlendMode: 'screen',
-            opacity: 0.8,
-            ['--frame-speed' as string]: '5.4s',
-            zIndex: 2,
+            opacity: 0.75,
+            ['--frame-speed' as string]: '5.7s',
+            zIndex: 3,
           }}
         />
       )}
 
-      {/* Avatar inset inward — inner white hairline sells the bevel. */}
+      {/* Bright inner bevel hairline — sells the bevel transition into the avatar. */}
       <div
-        className="absolute inset-[9%] rounded-full overflow-hidden bg-muted z-[3]"
-        style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.78)' }}
+        aria-hidden
+        className="pointer-events-none absolute inset-[8%] rounded-full"
+        style={{
+          boxShadow:
+            '0 0 0 1px rgba(255,255,255,0.9), inset 0 0 3px rgba(255,255,255,0.35)',
+          zIndex: 4,
+        }}
+      />
+
+      {/* Avatar inset inward — ring reads as a proper metallic band. */}
+      <div
+        className="absolute inset-[9%] rounded-full overflow-hidden bg-muted z-[5]"
       >
         {children}
       </div>
