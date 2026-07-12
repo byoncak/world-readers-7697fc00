@@ -231,39 +231,49 @@ const Admin = () => {
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 pb-32 space-y-4">
       <header className="px-1 pb-1 space-y-2">
-        <h1 className="cozy-title text-2xl">{heading}</h1>
-        <p className="text-sm text-muted-foreground font-body">{subhead}</p>
-        {effectiveScope === 'club' && adminClubs.length > 1 && clubId && (
-          <div className="pt-1">
-            <label
-              htmlFor="admin-club-switcher"
-              className="block text-[11px] uppercase tracking-wider font-body font-semibold text-muted-foreground mb-1"
+        {effectiveScope === 'club' && adminClubs.length > 1 && clubId && club ? (
+          <Select
+            value={clubId}
+            onValueChange={(next) => {
+              if (next && next !== clubId) navigate(`/c/${next}/admin`);
+            }}
+          >
+            <SelectTrigger
+              aria-label="Switch club to manage"
+              className="group h-auto min-h-[44px] w-full items-start gap-2 rounded-lg border-0 bg-transparent -mx-1 px-1 py-1 text-left shadow-none hover:bg-muted/60 focus:ring-2 focus:ring-ring focus:ring-offset-0 [&>svg]:mt-2 [&>svg]:h-5 [&>svg]:w-5 [&>svg]:opacity-70 [&>span]:line-clamp-none"
             >
-              Switch club to manage
-            </label>
-            <Select
-              value={clubId}
-              onValueChange={(next) => {
-                if (next && next !== clubId) navigate(`/c/${next}/admin`);
-              }}
-            >
-              <SelectTrigger
-                id="admin-club-switcher"
-                aria-label="Switch club to manage"
-                className="w-full min-h-[44px]"
+              <span
+                role="heading"
+                aria-level={1}
+                className="cozy-title text-2xl leading-tight flex-1 break-words"
               >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {adminClubs.map((m) => (
-                  <SelectItem key={m.club_id} value={m.club_id}>
-                    <span className="truncate">{m.club.name}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                Manage {club.name}
+              </span>
+            </SelectTrigger>
+            <SelectContent
+              align="start"
+              className="max-h-[70vh] w-[min(20rem,calc(100vw-2rem))]"
+            >
+              {adminClubs.map((m) => (
+                <SelectItem
+                  key={m.club_id}
+                  value={m.club_id}
+                  className="min-h-[44px]"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="break-words">{m.club.name}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {m.role}
+                    </span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <h1 className="cozy-title text-2xl leading-tight break-words">{heading}</h1>
         )}
+        <p className="text-sm text-muted-foreground font-body">{subhead}</p>
       </header>
 
       {showTabs && (
