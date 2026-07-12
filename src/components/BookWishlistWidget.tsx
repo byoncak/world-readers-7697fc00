@@ -153,7 +153,7 @@ const BookWishlistWidget = () => {
     if (voted) {
       await supabase.from('vote_likes').delete().eq('suggestion_id', suggestionId).eq('user_id', user.id);
     } else {
-      await supabase.from('vote_likes').insert({ user_id: user.id, suggestion_id: suggestionId });
+      await supabase.from('vote_likes').insert({ user_id: user.id, suggestion_id: suggestionId, club_id: clubId } as any);
     }
     fetchSuggestions();
   };
