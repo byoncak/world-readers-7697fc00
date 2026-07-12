@@ -2,11 +2,11 @@ import { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { useEquippedFrame, parseInlineStyle } from '@/hooks/useEquippedFrame';
 import { cn } from '@/lib/utils';
-import Sparkles from '@/components/Sparkles';
 import ElectricBorder from '@/components/ElectricBorder';
 import ChromeBorder from '@/components/ChromeBorder';
 import DarkMagicBorder from '@/components/DarkMagicBorder';
 import HolographicBorder from '@/components/HolographicBorder';
+import StarryNightBorder from '@/components/StarryNightBorder';
 
 interface UserAvatarProps {
   userId: string;
@@ -29,7 +29,7 @@ const UserAvatarInner = memo(({ userId, avatarUrl, displayName, size = 'sm', cla
 
   const hasGradientFrame = frame?.gradient;
   const frameStyle = frame ? parseInlineStyle(frame.border_style) : undefined;
-  const useSparkles = frame?.animation_class === 'animate-starry-twinkle';
+  const isStarry = frame?.animation_class === 'animate-starry-twinkle';
   const isElectric = frame?.animation_class === 'animate-electric-border';
   const isChrome = frame?.animation_class === 'animate-chrome-ring';
   const isDarkMagic = frame?.animation_class === 'animate-dark-magic';
@@ -79,13 +79,21 @@ const UserAvatarInner = memo(({ userId, avatarUrl, displayName, size = 'sm', cla
     );
   }
 
+  if (isStarry) {
+    return (
+      <StarryNightBorder size={size} className={className} variantKey={frame?.variant_key}>
+        {avatarContent}
+      </StarryNightBorder>
+    );
+  }
+
   const renderAvatar = () => {
     if (hasGradientFrame) {
       const padSize = size === 'lg' ? '3px' : size === 'md' ? '3px' : '2px';
 
       return (
         <div
-          className={cn('shrink-0 rounded-full', !useSparkles && (frame.animation_class || 'animate-chrome-shimmer'), sizeClasses[size], className)}
+          className={cn('shrink-0 rounded-full', frame.animation_class || 'animate-chrome-shimmer', sizeClasses[size], className)}
           style={{
             background: frame.gradient,
             padding: padSize,
@@ -125,14 +133,6 @@ const UserAvatarInner = memo(({ userId, avatarUrl, displayName, size = 'sm', cla
       </div>
     );
   };
-
-  if (useSparkles) {
-    return (
-      <Sparkles color="#c7d2fe">
-        {renderAvatar()}
-      </Sparkles>
-    );
-  }
 
   return renderAvatar();
 });

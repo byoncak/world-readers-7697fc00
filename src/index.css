@@ -1102,6 +1102,28 @@
   will-change: transform;
 }
 
+/* Starry Night — staggered twinkle on each star (scale+opacity only, GPU-composited). */
+@keyframes starry-twinkle {
+  0%, 100% { transform: scale(0.85); opacity: 0.55; }
+  50%      { transform: scale(1.15); opacity: 1;    }
+}
+@keyframes starry-twinkle-soft {
+  0%, 100% { transform: scale(0.9);  opacity: 0.35; }
+  50%      { transform: scale(1.05); opacity: 0.85; }
+}
+.starry-twinkle {
+  animation: starry-twinkle 2.6s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+.starry-twinkle-soft {
+  animation: starry-twinkle-soft 3.4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .avatar-frame-ring,
   .avatar-frame-ring-reverse,
@@ -1124,7 +1146,9 @@
   .electric-border,
   .electric-border *,
   .holographic-border,
-  .holographic-border * {
+  .holographic-border *,
+  .starry-twinkle,
+  .starry-twinkle-soft {
     animation: none !important;
     transition: none !important;
   }
