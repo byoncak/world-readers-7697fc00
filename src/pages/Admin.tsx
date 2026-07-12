@@ -22,6 +22,7 @@ import BookManagerWidget from '@/components/BookManagerWidget';
 import MeetingPollToggleWidget from '@/components/MeetingPollToggleWidget';
 import AdminAnnouncementSection from '@/components/admin/AdminAnnouncementSection';
 import AdminPollManager from '@/components/admin/AdminPollManager';
+import AdminMeetingManager from '@/components/admin/AdminMeetingManager';
 import AdminMembersRoles from '@/components/admin/AdminMembersRoles';
 import RolePermissionsCard from '@/components/admin/RolePermissionsCard';
 import AdminTestingTools from '@/components/admin/AdminTestingTools';
@@ -101,8 +102,14 @@ const Admin = () => {
       show: canManageCurrentClub,
       body: (
         <div className="space-y-4">
+          <AdminMeetingManager />
           <MeetingPollToggleWidget />
-          <AdminPollManager />
+          <div className="pt-1">
+            <p className="text-[11px] uppercase tracking-wider font-body font-semibold text-muted-foreground mb-2 px-1">
+              Polls
+            </p>
+            <AdminPollManager />
+          </div>
         </div>
       ),
     },
