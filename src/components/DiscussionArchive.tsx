@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useClub } from '@/contexts/ClubContext';
 import { ChevronDown } from 'lucide-react';
 import StyledName from './StyledName';
 import { format, formatDistanceToNow } from 'date-fns';
