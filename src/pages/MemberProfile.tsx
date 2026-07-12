@@ -70,7 +70,7 @@ const MemberProfile = () => {
   const { userId } = useParams<{ userId: string }>();
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
-  const { clubPath } = useClub();
+  const { clubPath, clubId } = useClub();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [progress, setProgress] = useState<ReadingProgressItem[]>([]);
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
@@ -250,6 +250,7 @@ const MemberProfile = () => {
       from_user_id: user.id, to_user_id: userId,
       title: recTitle.trim(), author: recAuthor.trim(),
       message: recMessage.trim() || null,
+      club_id: clubId,
     });
     if (error) { toast.error('Failed to send recommendation'); }
     else {

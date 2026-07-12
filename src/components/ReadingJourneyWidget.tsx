@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useClub } from '@/contexts/ClubContext';
 import { Library, Sparkles } from 'lucide-react';
 import { LoadingBlock, ErrorBlock } from '@/components/StateBlock';
 
@@ -23,22 +24,27 @@ const spineColors = [
 ];
 
 const ReadingJourneyWidget = () => {
+  const { clubId } = useClub();
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
+    if (!clubId) { setBooks([]); setLoading(false); return; }
     setLoading(true);
     setError(false);
     const { data, error: err } = await supabase
       .from('books')
-      .select('id, title, author, status, cover_url, spine_art_url, meeting_date')
+      .select('id, title, author, status, cover_url, spine_art_url, meeting_date, club_id')
+      .eq('club_id', clubId)
       .order('selected_date', { ascending: true });
     if (err) setError(true);
-    else if (data) setBooks(data);
+    else if (data) setBooks((data as any[]).filter((b) => b.club_id === clubId));
     setLoading(false);
-  }, []);
+  }, [clubId]);
 
+  // Reset immediately on club change so stale data never renders.
+  useEffect(() => { setBooks([]); }, [clubId]);
   useEffect(() => { load(); }, [load]);
 
   if (loading) {

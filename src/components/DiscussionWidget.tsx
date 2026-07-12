@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo, lazy, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useClub } from '@/contexts/ClubContext';
 import { MessageCircle, Send, X, Paperclip, ChevronDown, ChevronUp, CornerDownRight, Plus } from 'lucide-react';
 import MentionInput from './MentionInput';
 import MentionText from './MentionText';
@@ -261,6 +262,7 @@ PostCard.displayName = 'PostCard';
 
 const DiscussionWidget = () => {
   const { user } = useAuth();
+  const { clubId } = useClub();
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [replyTo, setReplyTo] = useState<Discussion | null>(null);
@@ -323,19 +325,23 @@ const DiscussionWidget = () => {
   }, []);
 
   useEffect(() => {
+    setCurrentBookId(null);
+    setDiscussions([]);
+    if (!clubId) return;
     const init = async () => {
       const { data: books } = await supabase
         .from('books')
-        .select('id')
+        .select('id, club_id')
         .eq('status', 'current')
+        .eq('club_id', clubId)
         .limit(1);
-      if (books && books.length > 0) {
+      if (books && books.length > 0 && books[0].club_id === clubId) {
         setCurrentBookId(books[0].id);
         fetchDiscussions(books[0].id);
       }
     };
     init();
-  }, [fetchDiscussions]);
+  }, [fetchDiscussions, clubId]);
 
   useEffect(() => {
     if (!currentBookId) return;
@@ -394,6 +400,7 @@ const DiscussionWidget = () => {
     await supabase.from('discussions').insert({
       book_id: currentBookId,
       user_id: user.id,
+      club_id: clubId,
       message: newMessage.trim() || (finalImageUrl ? '' : ''),
       parent_id: replyTo?.id ?? null,
       image_url: finalImageUrl,

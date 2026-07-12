@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useClub } from '@/contexts/ClubContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,7 @@ interface NoteItem {
 
 const PersonalNotes = () => {
   const { user } = useAuth();
+  const { clubId } = useClub();
   const [notes, setNotes] = useState<NoteItem[]>([]);
   const [currentBook, setCurrentBook] = useState<{ id: string; title: string } | null>(null);
   const [text, setText] = useState('');
@@ -29,10 +31,14 @@ const PersonalNotes = () => {
   const fetchData = useCallback(async () => {
     if (!user) return;
     setError(false);
+    setCurrentBook(null);
+    setNotes([]);
+    if (!clubId) { setLoading(false); return; }
     const { data: book, error: bookErr } = await supabase
       .from('books')
       .select('id, title')
       .eq('status', 'current')
+      .eq('club_id', clubId)
       .maybeSingle();
 
     if (bookErr) { setError(true); setLoading(false); return; }
@@ -50,7 +56,7 @@ const PersonalNotes = () => {
     if (notesErr) setError(true);
     else setNotes(data || []);
     setLoading(false);
-  }, [user]);
+  }, [user, clubId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

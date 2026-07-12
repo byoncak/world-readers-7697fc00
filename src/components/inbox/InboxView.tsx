@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useClub } from '@/contexts/ClubContext';
 import { supabase } from '@/integrations/supabase/client';
 import { MessageCircle, BookOpen, Send, ArrowLeft, PenSquare, Search, Paperclip, Video, Users } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -43,6 +44,7 @@ interface InboxViewProps {
 
 const InboxView = ({ embedded = false }: InboxViewProps) => {
   const { user } = useAuth();
+  const { clubId } = useClub();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -146,8 +148,9 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     const { error } = await supabase.from('direct_messages').insert({
       sender_id: user.id,
       receiver_id: activeConvo.otherUserId,
+      club_id: clubId,
       message,
-    });
+    } as any);
 
     if (error) {
       setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
@@ -155,7 +158,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     }
 
     return true;
-  }, [activeConvo, buildOptimisticMessage, pushOptimisticMessage, sending, user]);
+  }, [activeConvo, buildOptimisticMessage, pushOptimisticMessage, sending, user, clubId]);
 
   // Fetch conversation list
   const fetchConversations = useCallback(async () => {

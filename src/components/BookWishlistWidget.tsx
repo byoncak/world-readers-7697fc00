@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useClub } from '@/contexts/ClubContext';
 import { useRole } from '@/hooks/useRole';
 import { BookHeart, Heart, Plus, MessageCircle, Send, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -31,6 +32,7 @@ interface Suggestion {
 
 const BookWishlistWidget = () => {
   const { user } = useAuth();
+  const { clubId } = useClub();
   const { isPrivileged: globalPriv, canManageCurrentClub } = useRole();
   const isPrivileged = globalPriv || canManageCurrentClub;
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -52,9 +54,12 @@ const BookWishlistWidget = () => {
     : suggestions.some(s => s.user_id === user?.id);
 
   useEffect(() => {
+    setSuggestions([]);
+    setCurrentBookId(null);
+    if (!clubId) return;
     fetchCurrentBook();
     fetchSuggestions();
-  }, []);
+  }, [clubId]);
 
   useEffect(() => {
     const q = bookQuery.trim();
@@ -79,25 +84,30 @@ const BookWishlistWidget = () => {
   }, [bookQuery]);
 
   const fetchCurrentBook = async () => {
+    if (!clubId) return;
     const { data } = await supabase
       .from('books')
       .select('id')
       .eq('status', 'current')
+      .eq('club_id', clubId)
       .maybeSingle();
     setCurrentBookId(data?.id || null);
   };
 
   const fetchSuggestions = async () => {
+    if (!clubId) return;
     const { data: votes } = await supabase
       .from('book_votes')
       .select('*, profiles(display_name)')
+      .eq('club_id', clubId)
       .order('created_at', { ascending: false });
 
     if (!votes) return;
 
-    const { data: likes } = await supabase
-      .from('vote_likes')
-      .select('suggestion_id, user_id');
+    const suggestionIds = votes.map((v: any) => v.id);
+    const { data: likes } = suggestionIds.length
+      ? await supabase.from('vote_likes').select('suggestion_id, user_id').in('suggestion_id', suggestionIds)
+      : { data: [] as any[] };
 
     const enriched = votes.map((v: any) => ({
       ...v,
@@ -117,6 +127,7 @@ const BookWishlistWidget = () => {
     try {
       await supabase.from('book_votes').insert({
         user_id: user.id,
+        club_id: clubId,
         suggestion_title: title.trim(),
         suggestion_author: author.trim(),
         book_id: currentBookId,
@@ -142,7 +153,7 @@ const BookWishlistWidget = () => {
     if (voted) {
       await supabase.from('vote_likes').delete().eq('suggestion_id', suggestionId).eq('user_id', user.id);
     } else {
-      await supabase.from('vote_likes').insert({ user_id: user.id, suggestion_id: suggestionId });
+      await supabase.from('vote_likes').insert({ user_id: user.id, suggestion_id: suggestionId, club_id: clubId } as any);
     }
     fetchSuggestions();
   };
@@ -173,8 +184,9 @@ const BookWishlistWidget = () => {
     await supabase.from('suggestion_comments').insert({
       suggestion_id: expandedId,
       user_id: user.id,
+      club_id: clubId,
       message: newComment.trim(),
-    });
+    } as any);
 
     setNewComment('');
     fetchComments(expandedId);

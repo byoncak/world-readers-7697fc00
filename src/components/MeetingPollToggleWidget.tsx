@@ -1,25 +1,31 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useClub } from '@/contexts/ClubContext';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '@/components/ui/switch';
 
 const MeetingPollToggleWidget = () => {
   const { user } = useAuth();
+  const { clubId } = useClub();
   const { toast } = useToast();
   const [currentBookId, setCurrentBookId] = useState<string | null>(null);
   const [rsvpActive, setRsvpActive] = useState(false);
   const [togglingRsvp, setTogglingRsvp] = useState(false);
 
   useEffect(() => {
+    setCurrentBookId(null);
+    setRsvpActive(false);
+    if (!clubId) return;
     const fetchCurrentBook = async () => {
       const { data } = await supabase
         .from('books')
         .select('id, meeting_rsvp_active, meeting_date')
         .eq('status', 'current')
+        .eq('club_id', clubId)
         .not('meeting_date', 'is', null)
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (!data) {
         setCurrentBookId(null);
@@ -32,7 +38,7 @@ const MeetingPollToggleWidget = () => {
     };
 
     fetchCurrentBook();
-  }, []);
+  }, [clubId]);
 
   const toggleRsvpPoll = async () => {
     if (!currentBookId || togglingRsvp) return;

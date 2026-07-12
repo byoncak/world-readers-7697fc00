@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useClub } from '@/contexts/ClubContext';
 import { toast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -38,6 +39,7 @@ const CheerDialog = ({
   onCheerSent,
 }: CheerDialogProps) => {
   const { user } = useAuth();
+  const { clubId } = useClub();
   const [sending, setSending] = useState(false);
   const [customMode, setCustomMode] = useState(false);
   const [customMessage, setCustomMessage] = useState('');
@@ -50,9 +52,10 @@ const CheerDialog = ({
       from_user_id: user.id,
       to_user_id: targetUserId,
       book_id: bookId,
+      club_id: clubId,
       message: preset.message,
       preset_key: preset.key,
-    });
+    } as any);
 
     setSending(false);
 

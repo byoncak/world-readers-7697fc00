@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useClub } from '@/contexts/ClubContext';
 import { ThumbsUp, ThumbsDown, Heart } from 'lucide-react';
 
 
@@ -17,6 +18,7 @@ interface Props {
 
 const DiscussionReactions = ({ discussionId }: Props) => {
   const { user } = useAuth();
+  const { clubId } = useClub();
   const [counts, setCounts] = useState<ReactionCounts>({});
   const [showExtras, setShowExtras] = useState(false);
   const [extrasAlign, setExtrasAlign] = useState<'left' | 'right'>('right');
@@ -72,6 +74,7 @@ const DiscussionReactions = ({ discussionId }: Props) => {
       const { error } = await supabase.from('discussion_reactions').insert({
         discussion_id: discussionId,
         user_id: user.id,
+        club_id: clubId,
         reaction_type: type,
       } as any);
       if (!error) {
