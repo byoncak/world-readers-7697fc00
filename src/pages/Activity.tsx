@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useActivityFeed, type ActivityItem } from '@/hooks/useActivityFeed';
+import { activityDestination } from '@/lib/activityDestination';
+import { useClub } from '@/contexts/ClubContext';
 import PollWidget from '@/components/PollWidget';
 import ActivityReactions from '@/components/ActivityReactions';
 import { supabase } from '@/integrations/supabase/client';
