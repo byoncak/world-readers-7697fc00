@@ -174,11 +174,12 @@ const CurrentBookWidget = () => {
   };
 
   const updateProgress = async () => {
-    if (!book || !user) return;
+    if (!book || !user || !clubId) return;
     setUpdating(true);
-    const newPage = myPage;
     const total = book.total_pages || 1;
     const prevPage = progress.find((p) => p.user_id === user.id)?.current_page ?? 0;
+    // Clamp the new page to [0, total] so we never push over-max writes.
+    const newPage = Math.max(0, Math.min(total, myPage));
     const pagesGained = newPage - prevPage;
     const nowComplete = prevPage < total && newPage >= total;
     await supabase
@@ -186,9 +187,17 @@ const CurrentBookWidget = () => {
       .upsert({
         user_id: user.id,
         book_id: book.id,
+        club_id: clubId,
         current_page: newPage,
         last_updated: new Date().toISOString(),
       }, { onConflict: 'user_id,book_id' });
+
+    // Best-effort: use the current user's known display name so their own
+    // row never renders as "Reader" while we wait for the next fetch.
+    const myName =
+      progress.find((p) => p.user_id === user.id)?.display_name ??
+      (user.user_metadata?.display_name as string | undefined) ??
+      null;
 
     // Optimistically update local list instead of refetching everyone.
     const nowIso = new Date().toISOString();
@@ -197,7 +206,7 @@ const CurrentBookWidget = () => {
       if (exists) {
         return prev.map((p) =>
           p.user_id === user.id
-            ? { ...p, current_page: newPage, last_updated: nowIso }
+            ? { ...p, current_page: newPage, last_updated: nowIso, display_name: p.display_name ?? myName }
             : p
         );
       }
@@ -206,7 +215,7 @@ const CurrentBookWidget = () => {
         {
           user_id: user.id,
           current_page: newPage,
-          display_name: null,
+          display_name: myName,
           last_updated: nowIso,
         },
       ];
