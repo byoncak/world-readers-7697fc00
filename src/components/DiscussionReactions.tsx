@@ -74,6 +74,7 @@ const DiscussionReactions = ({ discussionId }: Props) => {
       const { error } = await supabase.from('discussion_reactions').insert({
         discussion_id: discussionId,
         user_id: user.id,
+        club_id: clubId,
         reaction_type: type,
       } as any);
       if (!error) {
