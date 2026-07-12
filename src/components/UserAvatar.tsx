@@ -134,14 +134,6 @@ const UserAvatarInner = memo(({ userId, avatarUrl, displayName, size = 'sm', cla
     );
   };
 
-  if (useSparkles) {
-    return (
-      <Sparkles color="#c7d2fe">
-        {renderAvatar()}
-      </Sparkles>
-    );
-  }
-
   return renderAvatar();
 });
 
