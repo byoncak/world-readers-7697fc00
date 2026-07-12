@@ -22,6 +22,7 @@ import BookManagerWidget from '@/components/BookManagerWidget';
 import MeetingPollToggleWidget from '@/components/MeetingPollToggleWidget';
 import AdminAnnouncementSection from '@/components/admin/AdminAnnouncementSection';
 import AdminPollManager from '@/components/admin/AdminPollManager';
+import AdminMeetingManager from '@/components/admin/AdminMeetingManager';
 import AdminMembersRoles from '@/components/admin/AdminMembersRoles';
 import RolePermissionsCard from '@/components/admin/RolePermissionsCard';
 import AdminTestingTools from '@/components/admin/AdminTestingTools';
