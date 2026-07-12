@@ -233,39 +233,58 @@ const Admin = () => {
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 pb-32 space-y-4">
       <header className="px-1 pb-1 space-y-2">
-        <h1 className="cozy-title text-2xl">{heading}</h1>
-        <p className="text-sm text-muted-foreground font-body">{subhead}</p>
-        {effectiveScope === 'club' && adminClubs.length > 1 && clubId && (
-          <div className="pt-1">
-            <label
-              htmlFor="admin-club-switcher"
-              className="block text-[11px] uppercase tracking-wider font-body font-semibold text-muted-foreground mb-1"
-            >
-              Switch club to manage
-            </label>
-            <Select
-              value={clubId}
-              onValueChange={(next) => {
-                if (next && next !== clubId) navigate(`/c/${next}/admin`);
-              }}
-            >
-              <SelectTrigger
-                id="admin-club-switcher"
+        {effectiveScope === 'club' && adminClubs.length > 1 && clubId && club ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
                 aria-label="Switch club to manage"
-                className="w-full min-h-[44px]"
+                className="group -mx-1 flex min-h-[44px] w-full items-start gap-2 rounded-lg px-1 py-1 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {adminClubs.map((m) => (
-                  <SelectItem key={m.club_id} value={m.club_id}>
-                    <span className="truncate">{m.club.name}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                <h1 className="cozy-title text-2xl leading-tight flex-1 break-words">
+                  Manage {club.name}
+                </h1>
+                <ChevronDown
+                  aria-hidden
+                  className="mt-2 h-5 w-5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180"
+                />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              sideOffset={6}
+              className="max-h-[70vh] w-[min(20rem,calc(100vw-2rem))] overflow-auto"
+            >
+              <DropdownMenuLabel>Switch club to manage</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {adminClubs.map((m) => {
+                const active = m.club_id === clubId;
+                return (
+                  <DropdownMenuItem
+                    key={m.club_id}
+                    onSelect={() => {
+                      if (!active) navigate(`/c/${m.club_id}/admin`);
+                    }}
+                    className="min-h-[44px] gap-2"
+                    aria-current={active ? 'true' : undefined}
+                  >
+                    <Check
+                      aria-hidden
+                      className={`h-4 w-4 shrink-0 ${active ? 'opacity-100' : 'opacity-0'}`}
+                    />
+                    <span className="flex-1 break-words">{m.club.name}</span>
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {m.role}
+                    </span>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <h1 className="cozy-title text-2xl leading-tight break-words">{heading}</h1>
         )}
+        <p className="text-sm text-muted-foreground font-body">{subhead}</p>
       </header>
 
       {showTabs && (
