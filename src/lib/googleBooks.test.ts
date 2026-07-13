@@ -34,7 +34,9 @@ describe('searchGoogleBooks', () => {
     expect(r.pages).toBe(240);
     expect(r.year).toBe(2001);
     expect(r.isbn).toBe('9781234567890');
-    expect(r.coverUrl).toBe('https://covers.openlibrary.org/b/id/12345-M.jpg');
+    // Stored cover prefers the large -L.jpg for crisp display; thumbnail row keeps -M.jpg.
+    expect(r.coverUrl).toBe('https://covers.openlibrary.org/b/id/12345-L.jpg');
+    expect(r.thumbnailUrl).toBe('https://covers.openlibrary.org/b/id/12345-M.jpg');
     expect(r.coverUrl?.startsWith('https://')).toBe(true);
   });
 
@@ -68,11 +70,37 @@ describe('searchGoogleBooks', () => {
     }) as any;
 
     const [r] = await searchGoogleBooks('bar');
-    expect(r.coverUrl).toBe('https://books.google.com/img?id=abc');
+    // HTTPS normalization + zoom upgrade + edge=curl removal for crisp cover.
+    expect(r.coverUrl?.startsWith('https://books.google.com/img')).toBe(true);
+    expect(r.coverUrl).toContain('zoom=1');
+    expect(r.coverUrl).not.toContain('edge=curl');
     expect(r.year).toBe(1999);
     expect(r.isbn).toBe('9780000000002');
     expect(r.externalId).toBe('gb1');
   });
+
+  it('upgrades Google Books URL: replaces zoom/edge params while preserving id', async () => {
+    global.fetch = vi.fn(async (url: any) => {
+      const u = String(url);
+      if (u.includes('openlibrary.org')) return new Response(JSON.stringify({ docs: [] }), { status: 200 });
+      return new Response(JSON.stringify({
+        items: [{
+          id: 'gb2',
+          volumeInfo: {
+            title: 'Big',
+            authors: ['X'],
+            imageLinks: {
+              thumbnail: 'http://books.google.com/img?id=THE_ID&printsec=frontcover&zoom=5&edge=curl',
+              large: 'http://books.google.com/img?id=THE_ID&printsec=frontcover&zoom=3&edge=curl',
+            },
+          },
+        }],
+      }), { status: 200 });
+    }) as any;
+    const [r] = await searchGoogleBooks('big');
+    expect(r.coverUrl).toContain('id=THE_ID');
+    expect(r.coverUrl).toContain('zoom=1');
+    expect(r.coverUrl).not.toContain('edge=curl');
 
   it('returns [] for empty queries and skips network', async () => {
     const spy = vi.fn();
