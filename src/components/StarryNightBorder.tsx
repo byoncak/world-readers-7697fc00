@@ -1,4 +1,4 @@
-import { memo, useMemo, type ReactNode } from 'react';
+import { memo, useMemo, useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 interface StarryNightBorderProps {
