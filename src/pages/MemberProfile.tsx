@@ -15,11 +15,11 @@ import ReadingTimelineShare from '@/components/ReadingTimelineShare';
 import { useClub } from '@/contexts/ClubContext';
 
 import StyledName from '@/components/StyledName';
-import Sparkles from '@/components/Sparkles';
 import ElectricBorder from '@/components/ElectricBorder';
 import ChromeBorder from '@/components/ChromeBorder';
 import DarkMagicBorder from '@/components/DarkMagicBorder';
 import HolographicBorder from '@/components/HolographicBorder';
+import StarryNightBorder from '@/components/StarryNightBorder';
 
 interface Profile {
   user_id: string;
