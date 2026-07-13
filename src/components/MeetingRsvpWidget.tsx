@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useClub } from '@/contexts/ClubContext';
-import { BookOpenCheck, Check, X, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { BookOpenCheck, Check, X, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import StyledName from './StyledName';
+import AttendeeFacePile, { type FacePileProfileInfo } from '@/components/AttendeeFacePile';
 
 type RsvpResponse = 'going' | 'not_going' | 'maybe';
 
@@ -14,6 +14,7 @@ interface RsvpRow {
   book_id: string;
   user_id: string;
   response: RsvpResponse;
+  created_at: string;
 }
 
 interface BookMeeting {
@@ -29,6 +30,8 @@ const responseConfig: Record<RsvpResponse, { label: string; emoji: string; color
   not_going: { label: 'Not Going', emoji: '❌', color: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700', icon: X },
 };
 
+const FACEPILE_PREFETCH = 10;
+
 const MeetingRsvpWidget = () => {
   const { user } = useAuth();
   const { clubId } = useClub();
@@ -36,8 +39,7 @@ const MeetingRsvpWidget = () => {
   const [meeting, setMeeting] = useState<BookMeeting | null>(null);
   const [rsvps, setRsvps] = useState<RsvpRow[]>([]);
   const [myResponse, setMyResponse] = useState<RsvpResponse | null>(null);
-  const [profiles, setProfiles] = useState<Map<string, string>>(new Map());
-  const [expanded, setExpanded] = useState(false);
+  const [profiles, setProfiles] = useState<Map<string, FacePileProfileInfo>>(new Map());
   const [submitting, setSubmitting] = useState(false);
 
   const fetchMeeting = async () => {
@@ -59,7 +61,7 @@ const MeetingRsvpWidget = () => {
   const fetchRsvps = async (bookId: string) => {
     const { data } = await supabase
       .from('meeting_rsvps')
-      .select('*')
+      .select('id, book_id, user_id, response, created_at')
       .eq('book_id', bookId);
 
     const rows = (data ?? []) as unknown as RsvpRow[];
@@ -70,14 +72,29 @@ const MeetingRsvpWidget = () => {
       setMyResponse(mine?.response ?? null);
     }
 
-    // Fetch profile names
-    const userIds = rows.map((r) => r.user_id);
-    if (userIds.length > 0) {
+    // Only prefetch face-pile profiles (top N going + self). Full list is loaded when the modal opens.
+    const going = rows
+      .filter((r) => r.response === 'going')
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .map((r) => r.user_id);
+    const prefetch = new Set<string>(going.slice(0, FACEPILE_PREFETCH));
+    if (user) prefetch.add(user.id);
+
+    if (prefetch.size > 0) {
       const { data: profs } = await supabase
         .from('profiles')
-        .select('user_id, display_name')
-        .in('user_id', userIds);
-      setProfiles(new Map((profs ?? []).map((p: any) => [p.user_id, p.display_name ?? 'Reader'])));
+        .select('user_id, display_name, avatar_url')
+        .in('user_id', Array.from(prefetch));
+      setProfiles((prev) => {
+        const next = new Map(prev);
+        (profs ?? []).forEach((p: any) => {
+          next.set(p.user_id, {
+            display_name: p.display_name ?? null,
+            avatar_url: p.avatar_url ?? null,
+          });
+        });
+        return next;
+      });
     }
   };
 
@@ -85,11 +102,13 @@ const MeetingRsvpWidget = () => {
     setMeeting(null);
     setRsvps([]);
     setMyResponse(null);
+    setProfiles(new Map());
     const init = async () => {
       const m = await fetchMeeting();
       if (m) fetchRsvps(m.id);
     };
     init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, clubId]);
 
   useEffect(() => {
@@ -99,31 +118,82 @@ const MeetingRsvpWidget = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'meeting_rsvps', filter: `book_id=eq.${meeting.id}` }, () => fetchRsvps(meeting.id))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meeting?.id]);
 
   const handleVote = async (response: RsvpResponse) => {
     if (!user || !meeting) return;
     setSubmitting(true);
 
+    const prevRsvps = rsvps;
+    const prevMy = myResponse;
+    const nowIso = new Date().toISOString();
+
+    // Optimistic
     if (myResponse === response) {
-      // Remove vote
-      await supabase.from('meeting_rsvps').delete().eq('book_id', meeting.id).eq('user_id', user.id);
+      setRsvps((rows) => rows.filter((r) => r.user_id !== user.id));
       setMyResponse(null);
     } else {
-      // Upsert
-      const existing = rsvps.find((r) => r.user_id === user.id);
-      if (existing) {
-        await supabase.from('meeting_rsvps').update({ response, updated_at: new Date().toISOString() }).eq('id', existing.id);
-      } else {
-        await supabase.from('meeting_rsvps').insert({ book_id: meeting.id, user_id: user.id, response, club_id: clubId } as any);
-      }
       setMyResponse(response);
+      setRsvps((rows) => {
+        const existing = rows.find((r) => r.user_id === user.id);
+        if (existing) return rows.map((r) => r.user_id === user.id ? { ...r, response } : r);
+        return [...rows, { id: `optimistic-${user.id}`, book_id: meeting.id, user_id: user.id, response, created_at: nowIso }];
+      });
+    }
+
+    let error: unknown = null;
+    if (prevMy === response) {
+      const res = await supabase.from('meeting_rsvps').delete().eq('book_id', meeting.id).eq('user_id', user.id);
+      error = res.error;
+    } else {
+      const existing = prevRsvps.find((r) => r.user_id === user.id);
+      if (existing) {
+        const res = await supabase.from('meeting_rsvps').update({ response, updated_at: nowIso }).eq('id', existing.id);
+        error = res.error;
+      } else {
+        const res = await supabase.from('meeting_rsvps').insert({ book_id: meeting.id, user_id: user.id, response, club_id: clubId } as any);
+        error = res.error;
+      }
+    }
+
+    if (error) {
+      // Rollback
+      setRsvps(prevRsvps);
+      setMyResponse(prevMy);
+      toast({ title: 'Could not save your response.', variant: 'destructive' });
+      setSubmitting(false);
+      return;
+    }
+
+    if (prevMy !== response) {
       toast({ title: `${responseConfig[response].emoji} You're ${responseConfig[response].label.toLowerCase()}!` });
     }
 
     await fetchRsvps(meeting.id);
     setSubmitting(false);
   };
+
+  const goingAttendees = useMemo(() => {
+    const going = rsvps.filter((r) => r.response === 'going');
+    const nameFor = (id: string) => profiles.get(id)?.display_name ?? 'Reader';
+    return going
+      .slice()
+      .sort((a, b) => {
+        if (user) {
+          if (a.user_id === user.id) return -1;
+          if (b.user_id === user.id) return 1;
+        }
+        const cmp = a.created_at.localeCompare(b.created_at);
+        if (cmp !== 0) return cmp;
+        return nameFor(a.user_id).localeCompare(nameFor(b.user_id));
+      })
+      .map((r) => ({ userId: r.user_id, createdAt: r.created_at }));
+  }, [rsvps, profiles, user]);
+
+  const handleProfilesLoaded = useCallback((next: Map<string, FacePileProfileInfo>) => {
+    setProfiles(next);
+  }, []);
 
   if (!meeting) return null;
 
@@ -193,33 +263,19 @@ const MeetingRsvpWidget = () => {
             )}
           </div>
 
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 text-xs text-muted-foreground font-body hover:text-foreground transition-colors"
-          >
-            {total} {total === 1 ? 'response' : 'responses'}
-            {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-          </button>
-
-          {expanded && (
-            <div className="space-y-1.5 pt-1">
-              {responseOrder.map((r) => {
-                const matching = rsvps.filter((rv) => rv.response === r);
-                if (matching.length === 0) return null;
-                return (
-                  <div key={r} className="flex items-start gap-2 text-xs font-body">
-                    <span>{responseConfig[r].emoji}</span>
-                    <span className="text-muted-foreground flex flex-wrap gap-x-1">
-                      {matching.map((rv, idx) => (
-                        <span key={rv.user_id}>
-                          <StyledName userId={rv.user_id} name={profiles.get(rv.user_id) ?? 'Reader'} />
-                          {idx < matching.length - 1 && ', '}
-                        </span>
-                      ))}
-                    </span>
-                  </div>
-                );
-              })}
+          {goingAttendees.length > 0 && (
+            <div className="flex items-center justify-between gap-2">
+              <AttendeeFacePile
+                attendees={goingAttendees}
+                profiles={profiles}
+                onProfilesLoaded={handleProfilesLoaded}
+                label="going"
+                modalTitle="Who's going"
+                modalSubtitle={`${meeting.title} · ${format(new Date(meeting.meeting_date), 'EEE, MMM d · h:mm a')}`}
+              />
+              <span className="text-[11px] text-muted-foreground font-body shrink-0">
+                {total} {total === 1 ? 'response' : 'responses'}
+              </span>
             </div>
           )}
         </div>
