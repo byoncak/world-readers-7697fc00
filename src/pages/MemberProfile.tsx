@@ -381,7 +381,7 @@ const MemberProfile = () => {
                 </Link>
               )}
               {(() => {
-                const useSparkles = frame?.animation_class === 'animate-starry-twinkle';
+                const isStarry = frame?.animation_class === 'animate-starry-twinkle';
                 const isElectric = frame?.animation_class === 'animate-electric-border';
                 const isChrome = frame?.animation_class === 'animate-chrome-ring';
                 const isDarkMagic = frame?.animation_class === 'animate-dark-magic';
