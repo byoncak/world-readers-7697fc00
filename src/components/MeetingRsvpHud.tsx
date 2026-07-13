@@ -1,22 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { BookOpenCheck, Sparkles, Umbrella, Coffee } from 'lucide-react';
 import { format, differenceInCalendarDays } from 'date-fns';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import UserAvatar from '@/components/UserAvatar';
-import StyledName from '@/components/StyledName';
+import AttendeeFacePile, { type FacePileProfileInfo } from '@/components/AttendeeFacePile';
 
 type RsvpResponse = 'going' | 'not_going' | 'maybe';
 
 interface RsvpRow {
   user_id: string;
   response: RsvpResponse;
-}
-
-interface ProfileInfo {
-  display_name: string | null;
-  avatar_url: string | null;
+  created_at: string;
 }
 
 interface BookMeeting {
@@ -26,10 +20,10 @@ interface BookMeeting {
   meeting_location: string | null;
 }
 
-const responseConfig: Record<RsvpResponse, { label: string; icon: typeof Sparkles; borderClass: string }> = {
-  going: { label: 'Going', icon: Sparkles, borderClass: 'border-secondary' },
-  maybe: { label: 'Maybe', icon: Coffee, borderClass: 'border-soft-gold' },
-  not_going: { label: 'Not Going', icon: Umbrella, borderClass: 'border-destructive/40' },
+const responseConfig: Record<RsvpResponse, { label: string; icon: typeof Sparkles }> = {
+  going: { label: 'Going', icon: Sparkles },
+  maybe: { label: 'Maybe', icon: Coffee },
+  not_going: { label: 'Not Going', icon: Umbrella },
 };
 
 const thankYouMessages: Record<RsvpResponse, string> = {
@@ -42,20 +36,21 @@ type HudPhase = 'loading' | 'expanded' | 'thankyou' | 'compressed' | 'dismissed'
 
 const DISMISSED_KEY = (userId: string, bookId: string) => `rsvp-hud-dismissed-${userId}-${bookId}`;
 
+// Initial number of profiles to pre-fetch for the face pile (enough for desktop 8 + slack).
+const FACEPILE_PREFETCH = 10;
+
 const MeetingRsvpHud = () => {
   const { user } = useAuth();
   const [phase, setPhase] = useState<HudPhase>('loading');
   const [meeting, setMeeting] = useState<BookMeeting | null>(null);
   const [rsvps, setRsvps] = useState<RsvpRow[]>([]);
-  const [profiles, setProfiles] = useState<Map<string, ProfileInfo>>(new Map());
+  const [profiles, setProfiles] = useState<Map<string, FacePileProfileInfo>>(new Map());
   const [myResponse, setMyResponse] = useState<RsvpResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Swipe state (horizontal)
   const touchStartX = useRef(0);
   const hudRef = useRef<HTMLDivElement>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
-  const [detailOpen, setDetailOpen] = useState(false);
 
   const fetchMeeting = useCallback(async () => {
     const { data } = await supabase
@@ -76,24 +71,41 @@ const MeetingRsvpHud = () => {
     return null;
   }, []);
 
-  const fetchRsvps = useCallback(async (bookId: string) => {
+  const fetchRsvps = useCallback(async (bookId: string, currentUserId?: string) => {
+    // Lightweight rsvp fetch (just ids + response + created_at).
     const { data } = await supabase
       .from('meeting_rsvps')
-      .select('user_id, response')
+      .select('user_id, response, created_at')
       .eq('book_id', bookId);
 
     const rows = (data ?? []) as unknown as RsvpRow[];
     setRsvps(rows);
 
-    const userIds = rows.map((r) => r.user_id);
-    if (userIds.length > 0) {
+    // Pre-fetch only the small set of profiles we need for the visible face pile
+    // (top N going + self). Full list is lazy-loaded when the attendee modal opens.
+    const going = rows
+      .filter((r) => r.response === 'going')
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .map((r) => r.user_id);
+
+    const prefetch = new Set<string>(going.slice(0, FACEPILE_PREFETCH));
+    if (currentUserId) prefetch.add(currentUserId);
+
+    if (prefetch.size > 0) {
       const { data: profs } = await supabase
         .from('profiles')
         .select('user_id, display_name, avatar_url')
-        .in('user_id', userIds);
-      setProfiles(new Map((profs ?? []).map((p: any) => [p.user_id, { display_name: p.display_name, avatar_url: p.avatar_url }])));
-    } else {
-      setProfiles(new Map());
+        .in('user_id', Array.from(prefetch));
+      setProfiles((prev) => {
+        const next = new Map(prev);
+        (profs ?? []).forEach((p: any) => {
+          next.set(p.user_id, {
+            display_name: p.display_name ?? null,
+            avatar_url: p.avatar_url ?? null,
+          });
+        });
+        return next;
+      });
     }
 
     return rows;
@@ -120,13 +132,12 @@ const MeetingRsvpHud = () => {
         return;
       }
 
-      const rows = await fetchRsvps(m.id);
+      const rows = await fetchRsvps(m.id, user.id);
       if (!isMounted) return;
 
       const mine = rows.find((r) => r.user_id === user.id);
       if (mine) {
         setMyResponse(mine.response);
-        // Don't override if user manually expanded via "Change" button
         setPhase((prev) => prev === 'expanded' ? 'expanded' : 'compressed');
       } else {
         setMyResponse(null);
@@ -160,7 +171,7 @@ const MeetingRsvpHud = () => {
     };
   }, [user, fetchMeeting, fetchRsvps]);
 
-  // Realtime for rsvps
+  // Realtime for rsvps (debounced batch refetch).
   useEffect(() => {
     if (!meeting) return;
     let timer: number | null = null;
@@ -168,7 +179,7 @@ const MeetingRsvpHud = () => {
       if (timer) window.clearTimeout(timer);
       timer = window.setTimeout(() => {
         timer = null;
-        fetchRsvps(meeting.id);
+        fetchRsvps(meeting.id, user?.id);
       }, 300);
     };
     const channel = supabase
@@ -179,25 +190,42 @@ const MeetingRsvpHud = () => {
       if (timer) window.clearTimeout(timer);
       supabase.removeChannel(channel);
     };
-  }, [meeting?.id, fetchRsvps]);
+  }, [meeting?.id, fetchRsvps, user?.id]);
 
   const handleVote = async (response: RsvpResponse) => {
     if (!user || !meeting) return;
     setSubmitting(true);
 
-    const existing = rsvps.find((r) => r.user_id === user.id);
-    if (existing) {
-      await supabase.from('meeting_rsvps').update({ response, updated_at: new Date().toISOString() }).eq('book_id', meeting.id).eq('user_id', user.id);
-    } else {
-      await supabase.from('meeting_rsvps').insert({ book_id: meeting.id, user_id: user.id, response });
+    // Optimistic update
+    const nowIso = new Date().toISOString();
+    const prevRsvps = rsvps;
+    const prevMy = myResponse;
+    setMyResponse(response);
+    setRsvps((rows) => {
+      const existing = rows.find((r) => r.user_id === user.id);
+      if (existing) {
+        return rows.map((r) => r.user_id === user.id ? { ...r, response } : r);
+      }
+      return [...rows, { user_id: user.id, response, created_at: nowIso }];
+    });
+
+    const existing = prevRsvps.find((r) => r.user_id === user.id);
+    const { error } = existing
+      ? await supabase.from('meeting_rsvps').update({ response, updated_at: nowIso }).eq('book_id', meeting.id).eq('user_id', user.id)
+      : await supabase.from('meeting_rsvps').insert({ book_id: meeting.id, user_id: user.id, response });
+
+    if (error) {
+      // Rollback
+      setRsvps(prevRsvps);
+      setMyResponse(prevMy);
+      setSubmitting(false);
+      return;
     }
 
-    setMyResponse(response);
     setSubmitting(false);
-
     setPhase('thankyou');
     setTimeout(async () => {
-      await fetchRsvps(meeting.id);
+      await fetchRsvps(meeting.id, user.id);
       setPhase('compressed');
     }, 2500);
   };
@@ -218,10 +246,33 @@ const MeetingRsvpHud = () => {
     setSwipeOffset(0);
   };
 
+  // Deterministic attendees for the "Going" face pile:
+  // 1) current user first if attending, 2) earliest created_at, 3) display_name asc.
+  const goingAttendees = useMemo(() => {
+    const going = rsvps.filter((r) => r.response === 'going');
+    const nameFor = (id: string) => profiles.get(id)?.display_name ?? 'Reader';
+    return going
+      .slice()
+      .sort((a, b) => {
+        if (user) {
+          if (a.user_id === user.id) return -1;
+          if (b.user_id === user.id) return 1;
+        }
+        const cmp = a.created_at.localeCompare(b.created_at);
+        if (cmp !== 0) return cmp;
+        return nameFor(a.user_id).localeCompare(nameFor(b.user_id));
+      })
+      .map((r) => ({ userId: r.user_id, createdAt: r.created_at }));
+  }, [rsvps, profiles, user]);
+
+  const handleProfilesLoaded = useCallback((next: Map<string, FacePileProfileInfo>) => {
+    setProfiles(next);
+  }, []);
+
   if (phase === 'hidden' || phase === 'dismissed' || phase === 'loading' || !meeting) return null;
 
-  const counts: Record<RsvpResponse, RsvpRow[]> = { going: [], maybe: [], not_going: [] };
-  rsvps.forEach((r) => { if (counts[r.response]) counts[r.response].push(r); });
+  const counts: Record<RsvpResponse, number> = { going: 0, maybe: 0, not_going: 0 };
+  rsvps.forEach((r) => { if (counts[r.response] !== undefined) counts[r.response]++; });
 
   const responseOrder: RsvpResponse[] = ['going', 'maybe', 'not_going'];
 
@@ -256,7 +307,7 @@ const MeetingRsvpHud = () => {
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
-        <div className="mx-auto max-w-3xl rounded-full border border-border bg-card/95 backdrop-blur-md px-4 py-2 shadow-md flex items-center gap-3 overflow-hidden">
+        <div className="mx-auto max-w-3xl rounded-full border border-border bg-card/95 backdrop-blur-md pl-3 pr-2 py-1.5 shadow-md flex items-center gap-2 sm:gap-3 overflow-hidden">
           <BookOpenCheck className="h-4 w-4 text-terracotta shrink-0" />
           <span className="text-xs font-serif font-semibold text-foreground truncate shrink-0">
             {format(new Date(meeting.meeting_date), 'MMM d')}
@@ -272,94 +323,49 @@ const MeetingRsvpHud = () => {
           })()}
           <div className="h-4 w-px bg-border shrink-0" />
 
-          {/* Avatar groups — clickable to expand detail */}
-          <div
-            className="flex items-center gap-3 overflow-hidden flex-1 min-w-0 cursor-pointer"
-            onClick={() => setDetailOpen((v) => !v)}
-          >
-            {responseOrder.map((r) => {
-              const group = counts[r];
-              if (group.length === 0) return null;
-              const Icon = responseConfig[r].icon;
-              return (
-                <div key={r} className="flex items-center gap-1 shrink-0">
-                  <Icon className="h-3 w-3 text-muted-foreground" />
-                  <div className="flex -space-x-1.5">
-                    {group.slice(0, 5).map((rv) => {
-                      const prof = profiles.get(rv.user_id);
-                      return (
-                        <UserAvatar
-                          key={rv.user_id}
-                          userId={rv.user_id}
-                          avatarUrl={prof?.avatar_url ?? null}
-                          displayName={prof?.display_name ?? null}
-                          size="sm"
-                          className="!h-6 !w-6 !text-[9px]"
-                          linkToProfile={false}
-                        />
-                      );
-                    })}
-                    {group.length > 5 && (
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-border bg-muted text-[9px] font-body font-bold text-muted-foreground">
-                        +{group.length - 5}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          {/* Going face pile — single accessible target */}
+          <div className="flex-1 min-w-0 overflow-hidden">
+            {goingAttendees.length > 0 ? (
+              <AttendeeFacePile
+                attendees={goingAttendees}
+                profiles={profiles}
+                onProfilesLoaded={handleProfilesLoaded}
+                label="going"
+                modalTitle="Who's going"
+                modalSubtitle={`${meeting.title} · ${format(new Date(meeting.meeting_date), 'EEE, MMM d · h:mm a')}`}
+              />
+            ) : (
+              <span className="text-xs font-body text-muted-foreground">No one going yet</span>
+            )}
+          </div>
+
+          {/* Compact secondary counts */}
+          <div className="hidden xs:flex items-center gap-2 shrink-0 text-[10px] font-body text-muted-foreground">
+            {counts.maybe > 0 && (
+              <span className="inline-flex items-center gap-1" aria-label={`${counts.maybe} maybe`}>
+                <Coffee className="h-3 w-3" />
+                {counts.maybe}
+              </span>
+            )}
+            {counts.not_going > 0 && (
+              <span className="inline-flex items-center gap-1" aria-label={`${counts.not_going} not going`}>
+                <Umbrella className="h-3 w-3" />
+                {counts.not_going}
+              </span>
+            )}
           </div>
 
           {/* Change vote button */}
           <button
             onClick={() => setPhase('expanded')}
-            className="text-[10px] font-body text-primary hover:underline shrink-0"
+            className="text-[10px] font-body text-primary hover:underline shrink-0 min-h-11 px-2"
           >
             Change
           </button>
         </div>
 
-        {/* Expandable detail panel */}
-        {detailOpen && (
-          <div className="mx-auto max-w-3xl mt-1 rounded-2xl border border-border bg-card/95 backdrop-blur-md px-4 py-3 shadow-lg animate-fade-in space-y-2.5">
-            {responseOrder.map((r) => {
-              const group = counts[r];
-              if (group.length === 0) return null;
-              const Icon = responseConfig[r].icon;
-              return (
-                <div key={r}>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-[11px] font-body font-semibold text-foreground">
-                      {responseConfig[r].label} ({group.length})
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {group.map((rv) => {
-                      const prof = profiles.get(rv.user_id);
-                      const name = prof?.display_name ?? 'Reader';
-                      return (
-                        <div key={rv.user_id} className="flex items-center gap-1.5">
-                          <UserAvatar
-                            userId={rv.user_id}
-                            avatarUrl={prof?.avatar_url ?? null}
-                            displayName={prof?.display_name ?? null}
-                            size="sm"
-                            className="!h-6 !w-6 !text-[9px]"
-                          />
-                          <StyledName userId={rv.user_id} name={name} className="text-[11px] font-body text-foreground" />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
         <p className="text-center text-[10px] text-muted-foreground/60 font-body mt-0.5 select-none">
-          {detailOpen ? 'tap avatars to collapse' : 'swipe right to dismiss'}
+          swipe right to dismiss
         </p>
       </div>
     );
@@ -401,15 +407,25 @@ const MeetingRsvpHud = () => {
               >
                 <Icon className="h-5 w-5" />
                 <span>{responseConfig[r].label}</span>
+                {counts[r] > 0 && (
+                  <span className="text-[10px] font-normal opacity-80">{counts[r]}</span>
+                )}
               </button>
             );
           })}
         </div>
 
-        {rsvps.length > 0 && (
-          <p className="text-center text-[11px] text-muted-foreground font-body">
-            {rsvps.length} {rsvps.length === 1 ? 'person has' : 'people have'} responded
-          </p>
+        {goingAttendees.length > 0 && (
+          <div className="flex items-center justify-center pt-1">
+            <AttendeeFacePile
+              attendees={goingAttendees}
+              profiles={profiles}
+              onProfilesLoaded={handleProfilesLoaded}
+              label="going"
+              modalTitle="Who's going"
+              modalSubtitle={`${meeting.title} · ${format(new Date(meeting.meeting_date), 'EEE, MMM d · h:mm a')}`}
+            />
+          </div>
         )}
       </div>
     </div>
