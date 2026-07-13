@@ -38,13 +38,8 @@ const kindMeta: Record<ActivityItem['kind'], { icon: any; tint: string }> = {
   announcement: { icon: Megaphone, tint: 'text-rose-600' },
 };
 
-const initials = (name?: string) =>
-  (name ?? '?')
-    .split(' ')
-    .map((s) => s[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+
+
 
 function dayBucket(d: string) {
   const date = new Date(d);
