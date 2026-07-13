@@ -136,14 +136,18 @@ function Row({ item, clubPath }: { item: ActivityItem; clubPath: (p?: string) =>
   const inner = (
     <article className="flex gap-3 rounded-2xl border border-border/60 bg-card/60 p-3 transition-colors hover:bg-card">
       {item.userId ? (
-        <Avatar className="h-9 w-9 shrink-0">
-          <AvatarImage src={item.avatarUrl ?? undefined} alt="" />
-          <AvatarFallback>{initials(item.displayName)}</AvatarFallback>
-        </Avatar>
+        <UserAvatar
+          userId={item.userId}
+          avatarUrl={item.avatarUrl ?? null}
+          displayName={item.displayName ?? null}
+          size="sm"
+        />
       ) : (
-        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted ${meta.tint}`}>
-          <Icon className="h-4 w-4" />
-        </div>
+        <Avatar className="h-9 w-9 shrink-0">
+          <AvatarFallback className={meta.tint}>
+            <Icon className="h-4 w-4" />
+          </AvatarFallback>
+        </Avatar>
       )}
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex items-center gap-2">
