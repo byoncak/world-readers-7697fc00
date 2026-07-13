@@ -11,7 +11,9 @@ import {
   Megaphone,
   Sparkles,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import UserAvatar from '@/components/UserAvatar';
+import StyledName from '@/components/StyledName';
 import { useActivityFeed, type ActivityItem } from '@/hooks/useActivityFeed';
 import { activityDestination } from '@/lib/activityDestination';
 import { useClub } from '@/contexts/ClubContext';
@@ -55,7 +57,11 @@ function dayBucket(d: string) {
 }
 
 function ItemBody({ item }: { item: ActivityItem }) {
-  const name = <span className="font-semibold text-foreground">{item.displayName ?? 'Someone'}</span>;
+  const name = item.userId ? (
+    <StyledName userId={item.userId} name={item.displayName ?? 'Someone'} className="font-semibold text-foreground" />
+  ) : (
+    <span className="font-semibold text-foreground">{item.displayName ?? 'Someone'}</span>
+  );
   const book = item.bookTitle ? (
     <span className="italic">
       {item.bookTitle}
