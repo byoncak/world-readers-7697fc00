@@ -159,8 +159,8 @@ const ActivityFeed = ({ defaultOpen = false }: { defaultOpen?: boolean }) => {
                   />
                   <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <span className="min-w-0 flex-1 font-body">
-                    <Link to={clubPath(`/member/${ev.user_id}`)} className="font-semibold text-foreground hover:underline">
-                      {ev.display_name}
+                    <Link to={clubPath(`/member/${ev.user_id}`)} className="hover:underline">
+                      <StyledName userId={ev.user_id} name={ev.display_name} className="font-semibold text-foreground" />
                     </Link>{' '}
                     <span className="text-muted-foreground">{ev.description}</span>
                   </span>
