@@ -90,7 +90,7 @@ const PRIMARY_STARS: StarSpec[] = [
   { ...pt(156, 44), r: 2.6, kind: 'd', delay: 0.6, duration: 2.9 },
   { ...pt(202, 47), r: 3.4, kind: 'g', delay: 1.2, duration: 4.7 },
   { ...pt(268, 45), r: 2.8, kind: 'd', delay: 2.1, duration: 3.1 },
-].map((s) => ({ cx: s.x, cy: s.y, r: s.r, kind: s.kind, delay: s.delay, duration: s.duration }));
+].map((s) => ({ cx: s.x, cy: s.y, r: s.r, kind: s.kind as 'g' | 'd', delay: s.delay, duration: s.duration }));
 
 const SECONDARY_STARS: StarSpec[] = [
   { ...pt(-45, 43), r: 1.5, kind: 'd', delay: 0.3, duration: 4.1 },
@@ -101,7 +101,7 @@ const SECONDARY_STARS: StarSpec[] = [
   { ...pt(238, 45), r: 1.5, kind: 'g', delay: 1.5, duration: 2.7 },
   { ...pt(312, 48), r: 1.7, kind: 'd', delay: 0.8, duration: 4.9 },
   { ...pt(342, 44), r: 1.4, kind: 'd', delay: 2.3, duration: 3.1 },
-].map((s) => ({ cx: s.x, cy: s.y, r: s.r, kind: s.kind, delay: s.delay, duration: s.duration }));
+].map((s) => ({ cx: s.x, cy: s.y, r: s.r, kind: s.kind as 'g' | 'd', delay: s.delay, duration: s.duration }));
 
 const SPECKLES: Array<{ cx: number; cy: number; r: number }> = [
   { ...pt(-105, 41), r: 0.7 },
