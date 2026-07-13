@@ -21,9 +21,31 @@ const HOLO_GRADIENT =
 const HOLO_SHIMMER =
   'conic-gradient(from 0deg, transparent 0deg, transparent 150deg, rgba(255,255,255,0.55) 180deg, rgba(255,255,255,0.55) 205deg, transparent 235deg, transparent 360deg)';
 
+// Guaranteed-circular outer glow using a radial-gradient on an inset-negative
+// rounded-full layer. Replaces the previous box-shadow-based `holo-breathe`,
+// which some browsers rendered with visible rectangular filter bounds on
+// certain ancestor stacks (e.g. inside dialogs with backdrop filters).
+const HOLO_GLOW =
+  'radial-gradient(circle, rgba(140,110,255,0.55) 0%, rgba(90,140,255,0.35) 40%, rgba(90,140,255,0) 72%)';
+
 const HolographicBorder = memo(({ children, size = 'sm', className }: HolographicBorderProps) => {
   return (
-    <div className={cn('relative shrink-0 rounded-full holo-breathe', sizeClasses[size], className)}>
+    <div
+      className={cn('relative shrink-0 rounded-full', sizeClasses[size], className)}
+      style={{ overflow: 'visible', isolation: 'isolate' }}
+    >
+      {/* Purely circular breathing glow — radial gradient on rounded-full div
+          so there is no rectangular filter/box-shadow region. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute rounded-full holo-breathe"
+        style={{
+          inset: '-22%',
+          background: HOLO_GLOW,
+          zIndex: -1,
+        }}
+      />
+
       {/* Iridescent ring rotates AND continuously hue-rotates so colors cycle through the spectrum. */}
       <div
         aria-hidden
