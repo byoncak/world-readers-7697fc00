@@ -136,6 +136,7 @@ function Row({ item, clubPath }: { item: ActivityItem; clubPath: (p?: string) =>
           avatarUrl={item.avatarUrl ?? null}
           displayName={item.displayName ?? null}
           size="sm"
+          linkToProfile={!to}
         />
       ) : (
         <Avatar className="h-9 w-9 shrink-0">
