@@ -1,4 +1,4 @@
-import { memo, useMemo, type ReactNode } from 'react';
+import { memo, useMemo, useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 interface StarryNightBorderProps {
@@ -78,40 +78,6 @@ const pt = (angleDeg: number, radius: number) => {
   return { x: 50 + Math.cos(rad) * radius, y: 50 + Math.sin(rad) * radius };
 };
 
-// Hand-authored irregular constellation. Angles are intentionally NOT evenly
-// spaced, radii wobble between 43–48 so stars sit at varied depths in the
-// band, sizes/kinds mix, and each star gets an incommensurate twinkle period
-// (2.1–4.7s) plus a distinct delay so the group never visibly loops.
-const PRIMARY_STARS: StarSpec[] = [
-  { ...pt(-78, 47), r: 3.6, kind: 'g', delay: 0.0, duration: 2.7 },
-  { ...pt(-22, 45), r: 2.4, kind: 'd', delay: 0.9, duration: 3.3 },
-  { ...pt(34, 48), r: 3.0, kind: 'g', delay: 0.4, duration: 2.1 },
-  { ...pt(96, 46), r: 3.2, kind: 'g', delay: 1.7, duration: 3.9 },
-  { ...pt(156, 44), r: 2.6, kind: 'd', delay: 0.6, duration: 2.9 },
-  { ...pt(202, 47), r: 3.4, kind: 'g', delay: 1.2, duration: 4.7 },
-  { ...pt(268, 45), r: 2.8, kind: 'd', delay: 2.1, duration: 3.1 },
-].map((s) => ({ cx: s.x, cy: s.y, r: s.r, kind: s.kind as 'g' | 'd', delay: s.delay, duration: s.duration }));
-
-const SECONDARY_STARS: StarSpec[] = [
-  { ...pt(-45, 43), r: 1.5, kind: 'd', delay: 0.3, duration: 4.1 },
-  { ...pt(12, 48), r: 1.7, kind: 'd', delay: 1.3, duration: 3.7 },
-  { ...pt(72, 44), r: 1.4, kind: 'd', delay: 0.7, duration: 2.5 },
-  { ...pt(128, 48), r: 1.6, kind: 'g', delay: 1.9, duration: 4.3 },
-  { ...pt(178, 43), r: 1.8, kind: 'd', delay: 0.2, duration: 3.5 },
-  { ...pt(238, 45), r: 1.5, kind: 'g', delay: 1.5, duration: 2.7 },
-  { ...pt(312, 48), r: 1.7, kind: 'd', delay: 0.8, duration: 4.9 },
-  { ...pt(342, 44), r: 1.4, kind: 'd', delay: 2.3, duration: 3.1 },
-].map((s) => ({ cx: s.x, cy: s.y, r: s.r, kind: s.kind as 'g' | 'd', delay: s.delay, duration: s.duration }));
-
-const SPECKLES: Array<{ cx: number; cy: number; r: number }> = [
-  { ...pt(-105, 41), r: 0.7 },
-  { ...pt(-12, 40), r: 0.6 },
-  { ...pt(58, 42), r: 0.5 },
-  { ...pt(122, 41), r: 0.7 },
-  { ...pt(195, 40), r: 0.5 },
-  { ...pt(290, 42), r: 0.6 },
-].map((s) => ({ cx: s.x, cy: s.y, r: s.r }));
-
 const GlintPath = ({ cx, cy, r, fill }: { cx: number; cy: number; r: number; fill: string }) => (
   <g transform={`translate(${cx} ${cy})`}>
     <ellipse rx={r} ry={r * 0.28} fill={fill} />
@@ -119,21 +85,96 @@ const GlintPath = ({ cx, cy, r, fill }: { cx: number; cy: number; r: number; fil
   </g>
 );
 
+// Tiny mulberry32 seeded PRNG — deterministic per instance, no repeats.
+const makeRng = (seed: number) => {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+// A running per-mount counter guarantees separately-mounted instances differ
+// even without a stable seed prop.
+let mountCounter = 1;
+
+const generateConstellation = (
+  seed: number,
+  { primaryCount, secondaryCount, speckleCount }: { primaryCount: number; secondaryCount: number; speckleCount: number },
+) => {
+  const rng = makeRng(seed);
+  const between = (a: number, b: number) => a + rng() * (b - a);
+
+  // Distribute stars around the band with jittered sectors so no perfect ring
+  // yet no clumping either.
+  const sample = (count: number, rMin: number, rMax: number, sizeMin: number, sizeMax: number) => {
+    const items: StarSpec[] = [];
+    for (let i = 0; i < count; i++) {
+      const sectorCenter = (360 / count) * i;
+      const angle = sectorCenter + between(-360 / count / 2 + 4, 360 / count / 2 - 4);
+      const radius = between(rMin, rMax);
+      const rad = (angle * Math.PI) / 180;
+      items.push({
+        cx: 50 + Math.cos(rad) * radius,
+        cy: 50 + Math.sin(rad) * radius,
+        r: between(sizeMin, sizeMax),
+        kind: rng() < 0.55 ? 'g' : 'd',
+        delay: between(0, 2.4),
+        // Incommensurate irrational-ish durations so the group never resyncs.
+        duration: between(2.3, 4.9),
+      });
+    }
+    return items;
+  };
+
+  const primary = sample(primaryCount, 43, 48, 2.2, 3.7);
+  const secondary = sample(secondaryCount, 42, 48, 1.3, 1.9);
+  const speckles: Array<{ cx: number; cy: number; r: number }> = [];
+  for (let i = 0; i < speckleCount; i++) {
+    const angle = (360 / speckleCount) * i + between(-14, 14);
+    const radius = between(40, 42);
+    const rad = (angle * Math.PI) / 180;
+    speckles.push({
+      cx: 50 + Math.cos(rad) * radius,
+      cy: 50 + Math.sin(rad) * radius,
+      r: between(0.45, 0.8),
+    });
+  }
+  return { primary, secondary, speckles };
+};
+
 const StarryNightBorder = memo(
   ({ children, size = 'sm', className, variantKey, preview }: StarryNightBorderProps) => {
     const palette = VARIANT_PALETTES[variantKey || 'indigo'] || VARIANT_PALETTES.indigo;
 
-    // At sm show fewer but slightly larger, higher-contrast stars.
-    // Curate the constellation per size instead of just dropping secondary.
-    const primary = size === 'sm' ? PRIMARY_STARS.slice(0, 4) : PRIMARY_STARS;
-    const showSecondary = size === 'lg' || (size === 'md' && !preview);
-    const showSpeckle = size !== 'sm';
+    // Per-mount stable seed. Combined with variantKey + size so equipping a
+    // different variant re-derives the layout, but rerenders don't.
+    const seedRef = useRef<number>(0);
+    if (seedRef.current === 0) {
+      seedRef.current = (mountCounter++ * 2654435761) >>> 0;
+    }
 
-    // Boost star sizes at small avatar sizes so they're readable rather than tiny dots.
-    const sizeBoost = size === 'sm' ? 1.35 : size === 'md' ? 1.1 : 1;
+    // Fewer, bolder stars at small sizes so silhouette reads.
+    const counts =
+      size === 'sm'
+        ? { primaryCount: 4, secondaryCount: 0, speckleCount: 0 }
+        : size === 'md'
+        ? { primaryCount: 6, secondaryCount: preview ? 0 : 5, speckleCount: preview ? 0 : 4 }
+        : { primaryCount: 7, secondaryCount: preview ? 0 : 8, speckleCount: preview ? 0 : 6 };
+
+    const { primary, secondary, speckles } = useMemo(
+      () => generateConstellation(seedRef.current ^ (variantKey?.length ?? 0) ^ (size.charCodeAt(0) << 8), counts),
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [variantKey, size, preview],
+    );
+
+    const sizeBoost = size === 'sm' ? 1.5 : size === 'md' ? 1.15 : 1;
 
     const filterId = useMemo(
-      () => `starry-glow-${(variantKey || 'indigo').replace(/[^a-z0-9]/gi, '')}`,
+      () => `starry-glow-${(variantKey || 'indigo').replace(/[^a-z0-9]/gi, '')}-${seedRef.current.toString(36).slice(-4)}`,
       [variantKey],
     );
 
@@ -164,9 +205,9 @@ const StarryNightBorder = memo(
             </filter>
           </defs>
 
-          {showSpeckle && (
+          {speckles.length > 0 && (
             <g opacity={0.6}>
-              {SPECKLES.map((s, i) => (
+              {speckles.map((s, i) => (
                 <circle key={`sp-${i}`} cx={s.cx} cy={s.cy} r={s.r} fill={palette.speckle} />
               ))}
             </g>
@@ -194,28 +235,26 @@ const StarryNightBorder = memo(
             );
           })}
 
-          {showSecondary &&
-            !preview &&
-            SECONDARY_STARS.map((s, i) => {
-              const rr = s.r * sizeBoost;
-              return (
-                <g
-                  key={`s-${i}`}
-                  className="starry-twinkle-soft"
-                  style={{
-                    animationDelay: `${s.delay}s`,
-                    animationDuration: `${s.duration}s`,
-                    transformOrigin: `${s.cx}px ${s.cy}px`,
-                  }}
-                >
-                  {s.kind === 'g' ? (
-                    <GlintPath cx={s.cx} cy={s.cy} r={rr} fill={palette.glint} />
-                  ) : (
-                    <circle cx={s.cx} cy={s.cy} r={rr * 0.7} fill={palette.glint} />
-                  )}
-                </g>
-              );
-            })}
+          {secondary.map((s, i) => {
+            const rr = s.r * sizeBoost;
+            return (
+              <g
+                key={`s-${i}`}
+                className="starry-twinkle-soft"
+                style={{
+                  animationDelay: `${s.delay}s`,
+                  animationDuration: `${s.duration}s`,
+                  transformOrigin: `${s.cx}px ${s.cy}px`,
+                }}
+              >
+                {s.kind === 'g' ? (
+                  <GlintPath cx={s.cx} cy={s.cy} r={rr} fill={palette.glint} />
+                ) : (
+                  <circle cx={s.cx} cy={s.cy} r={rr * 0.7} fill={palette.glint} />
+                )}
+              </g>
+            );
+          })}
         </svg>
 
         {/* Avatar inset — inner hairline sells the ring. */}

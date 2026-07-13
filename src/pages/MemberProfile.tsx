@@ -15,11 +15,11 @@ import ReadingTimelineShare from '@/components/ReadingTimelineShare';
 import { useClub } from '@/contexts/ClubContext';
 
 import StyledName from '@/components/StyledName';
-import Sparkles from '@/components/Sparkles';
 import ElectricBorder from '@/components/ElectricBorder';
 import ChromeBorder from '@/components/ChromeBorder';
 import DarkMagicBorder from '@/components/DarkMagicBorder';
 import HolographicBorder from '@/components/HolographicBorder';
+import StarryNightBorder from '@/components/StarryNightBorder';
 
 interface Profile {
   user_id: string;
@@ -381,7 +381,7 @@ const MemberProfile = () => {
                 </Link>
               )}
               {(() => {
-                const useSparkles = frame?.animation_class === 'animate-starry-twinkle';
+                const isStarry = frame?.animation_class === 'animate-starry-twinkle';
                 const isElectric = frame?.animation_class === 'animate-electric-border';
                 const isChrome = frame?.animation_class === 'animate-chrome-ring';
                 const isDarkMagic = frame?.animation_class === 'animate-dark-magic';
@@ -412,7 +412,13 @@ const MemberProfile = () => {
 
                 let avatarElement: React.ReactNode;
 
-                if (isElectric) {
+                if (isStarry) {
+                  avatarElement = (
+                    <StarryNightBorder size="lg" variantKey={frame?.variant_key}>
+                      {avatarButton()}
+                    </StarryNightBorder>
+                  );
+                } else if (isElectric) {
                   avatarElement = (
                     <ElectricBorder size="lg" variantKey={frame?.variant_key}>
                       {avatarButton()}
@@ -439,7 +445,7 @@ const MemberProfile = () => {
                 } else if (frame?.gradient) {
                   avatarElement = (
                     <div
-                      className={`relative h-20 w-20 shrink-0 rounded-full ${!useSparkles ? (frame.animation_class || 'animate-chrome-shimmer') : ''}`}
+                      className={`relative h-20 w-20 shrink-0 rounded-full ${frame.animation_class || 'animate-chrome-shimmer'}`}
                       style={{ background: frame.gradient, padding: '3px', boxShadow: frame.box_shadow || undefined }}
                     >
                       <div className="relative z-[2] h-full w-full rounded-full overflow-hidden">
@@ -455,7 +461,7 @@ const MemberProfile = () => {
                   );
                 }
 
-                return useSparkles ? <Sparkles color="#c7d2fe">{avatarElement}</Sparkles> : avatarElement;
+                return avatarElement;
               })()}
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
 
