@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Activity, MessageCircle, BookOpen, ThumbsUp, UserPlus, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import UserAvatar from '@/components/UserAvatar';
+import StyledName from '@/components/StyledName';
 import { LoadingBlock, ErrorBlock, EmptyBlock } from '@/components/StateBlock';
 import { useClub } from '@/contexts/ClubContext';
 
