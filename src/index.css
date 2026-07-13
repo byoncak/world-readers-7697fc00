@@ -1080,13 +1080,17 @@
              holo-hue 8s linear infinite;
 }
 
-/* Holographic — gentle breathing outer glow on the wrapper. */
+/* Holographic — gentle breathing outer glow. Now applied to a dedicated
+   rounded-full radial-gradient layer so the glow is guaranteed circular in
+   every browser/stacking context (previously used box-shadow which could
+   render with visible rectangular filter bounds in some dialog stacks). */
 @keyframes holo-breathe {
-  0%, 100% { box-shadow: 0 0 10px 1px rgba(90,140,255,0.30), 0 0 18px 3px rgba(140,110,255,0.18); }
-  50%      { box-shadow: 0 0 16px 3px rgba(90,140,255,0.55), 0 0 28px 6px rgba(140,110,255,0.35); }
+  0%, 100% { opacity: 0.55; transform: scale(0.96); }
+  50%      { opacity: 1;    transform: scale(1.06); }
 }
 .holo-breathe {
   animation: holo-breathe 4s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 /* Chrome — subtle scale "breathing" on the counter-rotating bevel layer so

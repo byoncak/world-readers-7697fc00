@@ -2,8 +2,10 @@ export interface BookSearchResult {
   title: string;
   author: string;
   pages: number | null;
-  /** Preferred cover image URL (https, medium/thumbnail size). */
+  /** Preferred cover image URL — best available HTTPS quality for display. */
   coverUrl?: string | null;
+  /** Small thumbnail URL for search-result rows (may equal coverUrl). */
+  thumbnailUrl?: string | null;
   /** First publication year, when known. */
   year?: number | null;
   /** ISBN13 preferred, else ISBN10, when known. */
@@ -14,6 +16,37 @@ export interface BookSearchResult {
 
 const toHttps = (u?: string | null) =>
   typeof u === 'string' && u ? u.replace(/^http:\/\//i, 'https://') : null;
+
+/** Google Books returns thumbnail URLs with `zoom=1` and `edge=curl` params.
+ *  Bumping zoom to 0 (or dropping the param) yields the largest reliable size,
+ *  and removing edge=curl kills the visual page-curl overlay. */
+const upgradeGoogleImageUrl = (u: string | null): string | null => {
+  if (!u) return null;
+  try {
+    const url = new URL(u);
+    // request a larger frontcover; Google honors zoom=1 (large) and returns
+    // the biggest crisp version for the volume; zoom=0 sometimes 404s so 1 is safest.
+    url.searchParams.set('zoom', '1');
+    url.searchParams.delete('edge');
+    url.searchParams.delete('imgtk');
+    return url.toString();
+  } catch {
+    return u;
+  }
+};
+
+/** Pick the highest-quality Google Books cover from imageLinks with fallback. */
+const pickGoogleCover = (imgs: Record<string, string | undefined>): { hi: string | null; thumb: string | null } => {
+  const order = ['extraLarge', 'large', 'medium', 'small', 'thumbnail', 'smallThumbnail'];
+  let hi: string | null = null;
+  let thumb: string | null = null;
+  for (const k of order) {
+    const raw = toHttps(imgs[k]);
+    if (raw && !hi) hi = upgradeGoogleImageUrl(raw);
+    if (raw && !thumb) thumb = toHttps(imgs.thumbnail) || raw;
+  }
+  return { hi, thumb };
+};
 
 export async function searchGoogleBooks(query: string, signal?: AbortSignal): Promise<BookSearchResult[]> {
   const q = query.trim();
@@ -33,7 +66,9 @@ export async function searchGoogleBooks(query: string, signal?: AbortSignal): Pr
             typeof d.number_of_pages_median === 'number' && d.number_of_pages_median > 0
               ? d.number_of_pages_median
               : null,
-          coverUrl: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : null,
+          // Prefer the large -L.jpg for the stored/displayed cover; use -M for the search-row thumbnail.
+          coverUrl: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-L.jpg` : null,
+          thumbnailUrl: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : null,
           year: typeof d.first_publish_year === 'number' ? d.first_publish_year : null,
           isbn: Array.isArray(d.isbn) && d.isbn.length ? d.isbn[0] : null,
           externalId: typeof d.key === 'string' ? d.key : null,
@@ -53,13 +88,7 @@ export async function searchGoogleBooks(query: string, signal?: AbortSignal): Pr
   return items
     .map((it) => {
       const v = it.volumeInfo ?? {};
-      const imgs = v.imageLinks ?? {};
-      const cover =
-        toHttps(imgs.thumbnail) ||
-        toHttps(imgs.smallThumbnail) ||
-        toHttps(imgs.small) ||
-        toHttps(imgs.medium) ||
-        null;
+      const { hi, thumb } = pickGoogleCover(v.imageLinks ?? {});
       const year =
         typeof v.publishedDate === 'string' && v.publishedDate.length >= 4
           ? parseInt(v.publishedDate.slice(0, 4), 10) || null
@@ -71,7 +100,8 @@ export async function searchGoogleBooks(query: string, signal?: AbortSignal): Pr
         title: v.title ?? '',
         author: Array.isArray(v.authors) && v.authors.length ? v.authors[0] : '',
         pages: typeof v.pageCount === 'number' && v.pageCount > 0 ? v.pageCount : null,
-        coverUrl: cover,
+        coverUrl: hi,
+        thumbnailUrl: thumb,
         year,
         isbn: isbn13 || isbn10 || null,
         externalId: typeof it.id === 'string' ? it.id : null,
@@ -79,3 +109,6 @@ export async function searchGoogleBooks(query: string, signal?: AbortSignal): Pr
     })
     .filter((b) => b.title);
 }
+
+// Exposed for tests.
+export const __test = { upgradeGoogleImageUrl, pickGoogleCover };

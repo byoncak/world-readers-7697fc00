@@ -11,7 +11,9 @@ import {
   Megaphone,
   Sparkles,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import UserAvatar from '@/components/UserAvatar';
+import StyledName from '@/components/StyledName';
 import { useActivityFeed, type ActivityItem } from '@/hooks/useActivityFeed';
 import { activityDestination } from '@/lib/activityDestination';
 import { useClub } from '@/contexts/ClubContext';
@@ -36,13 +38,8 @@ const kindMeta: Record<ActivityItem['kind'], { icon: any; tint: string }> = {
   announcement: { icon: Megaphone, tint: 'text-rose-600' },
 };
 
-const initials = (name?: string) =>
-  (name ?? '?')
-    .split(' ')
-    .map((s) => s[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+
+
 
 function dayBucket(d: string) {
   const date = new Date(d);
@@ -55,7 +52,11 @@ function dayBucket(d: string) {
 }
 
 function ItemBody({ item }: { item: ActivityItem }) {
-  const name = <span className="font-semibold text-foreground">{item.displayName ?? 'Someone'}</span>;
+  const name = item.userId ? (
+    <StyledName userId={item.userId} name={item.displayName ?? 'Someone'} className="font-semibold text-foreground" />
+  ) : (
+    <span className="font-semibold text-foreground">{item.displayName ?? 'Someone'}</span>
+  );
   const book = item.bookTitle ? (
     <span className="italic">
       {item.bookTitle}
@@ -130,14 +131,19 @@ function Row({ item, clubPath }: { item: ActivityItem; clubPath: (p?: string) =>
   const inner = (
     <article className="flex gap-3 rounded-2xl border border-border/60 bg-card/60 p-3 transition-colors hover:bg-card">
       {item.userId ? (
-        <Avatar className="h-9 w-9 shrink-0">
-          <AvatarImage src={item.avatarUrl ?? undefined} alt="" />
-          <AvatarFallback>{initials(item.displayName)}</AvatarFallback>
-        </Avatar>
+        <UserAvatar
+          userId={item.userId}
+          avatarUrl={item.avatarUrl ?? null}
+          displayName={item.displayName ?? null}
+          size="sm"
+          linkToProfile={!to}
+        />
       ) : (
-        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted ${meta.tint}`}>
-          <Icon className="h-4 w-4" />
-        </div>
+        <Avatar className="h-9 w-9 shrink-0">
+          <AvatarFallback className={meta.tint}>
+            <Icon className="h-4 w-4" />
+          </AvatarFallback>
+        </Avatar>
       )}
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex items-center gap-2">

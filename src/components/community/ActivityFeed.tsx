@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Activity, MessageCircle, BookOpen, ThumbsUp, UserPlus, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import UserAvatar from '@/components/UserAvatar';
+import StyledName from '@/components/StyledName';
 import { LoadingBlock, ErrorBlock, EmptyBlock } from '@/components/StateBlock';
 import { useClub } from '@/contexts/ClubContext';
 
@@ -158,8 +159,8 @@ const ActivityFeed = ({ defaultOpen = false }: { defaultOpen?: boolean }) => {
                   />
                   <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <span className="min-w-0 flex-1 font-body">
-                    <Link to={clubPath(`/member/${ev.user_id}`)} className="font-semibold text-foreground hover:underline">
-                      {ev.display_name}
+                    <Link to={clubPath(`/member/${ev.user_id}`)} className="hover:underline">
+                      <StyledName userId={ev.user_id} name={ev.display_name} className="font-semibold text-foreground" />
                     </Link>{' '}
                     <span className="text-muted-foreground">{ev.description}</span>
                   </span>
