@@ -205,9 +205,9 @@ const StarryNightBorder = memo(
             </filter>
           </defs>
 
-          {showSpeckle && (
+          {speckles.length > 0 && (
             <g opacity={0.6}>
-              {SPECKLES.map((s, i) => (
+              {speckles.map((s, i) => (
                 <circle key={`sp-${i}`} cx={s.cx} cy={s.cy} r={s.r} fill={palette.speckle} />
               ))}
             </g>
@@ -235,28 +235,26 @@ const StarryNightBorder = memo(
             );
           })}
 
-          {showSecondary &&
-            !preview &&
-            SECONDARY_STARS.map((s, i) => {
-              const rr = s.r * sizeBoost;
-              return (
-                <g
-                  key={`s-${i}`}
-                  className="starry-twinkle-soft"
-                  style={{
-                    animationDelay: `${s.delay}s`,
-                    animationDuration: `${s.duration}s`,
-                    transformOrigin: `${s.cx}px ${s.cy}px`,
-                  }}
-                >
-                  {s.kind === 'g' ? (
-                    <GlintPath cx={s.cx} cy={s.cy} r={rr} fill={palette.glint} />
-                  ) : (
-                    <circle cx={s.cx} cy={s.cy} r={rr * 0.7} fill={palette.glint} />
-                  )}
-                </g>
-              );
-            })}
+          {secondary.map((s, i) => {
+            const rr = s.r * sizeBoost;
+            return (
+              <g
+                key={`s-${i}`}
+                className="starry-twinkle-soft"
+                style={{
+                  animationDelay: `${s.delay}s`,
+                  animationDuration: `${s.duration}s`,
+                  transformOrigin: `${s.cx}px ${s.cy}px`,
+                }}
+              >
+                {s.kind === 'g' ? (
+                  <GlintPath cx={s.cx} cy={s.cy} r={rr} fill={palette.glint} />
+                ) : (
+                  <circle cx={s.cx} cy={s.cy} r={rr * 0.7} fill={palette.glint} />
+                )}
+              </g>
+            );
+          })}
         </svg>
 
         {/* Avatar inset — inner hairline sells the ring. */}
