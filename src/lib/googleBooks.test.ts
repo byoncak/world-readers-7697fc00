@@ -101,6 +101,9 @@ describe('searchGoogleBooks', () => {
     expect(r.coverUrl).toContain('id=THE_ID');
     expect(r.coverUrl).toContain('zoom=1');
     expect(r.coverUrl).not.toContain('edge=curl');
+  });
+
+
 
   it('returns [] for empty queries and skips network', async () => {
     const spy = vi.fn();
