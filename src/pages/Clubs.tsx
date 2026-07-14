@@ -192,17 +192,17 @@ const Clubs = () => {
         </div>
 
         {isLoadingMemberships ? (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="flex flex-col gap-2">
             {[0, 1, 2].map((i) => (
               <li
                 key={i}
                 aria-hidden
-                className="h-[176px] animate-pulse rounded-2xl border border-border/60 bg-card/50"
+                className="h-[68px] animate-pulse rounded-xl border border-border/60 bg-card/50"
               />
             ))}
           </ul>
         ) : hasClubs ? (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="flex flex-col gap-2">
             {memberships.map((m) => (
               <li key={m.club_id} className="min-w-0">
                 <YourClubCard
@@ -216,9 +216,9 @@ const Clubs = () => {
               <button
                 type="button"
                 onClick={() => setCreateOpen(true)}
-                className="flex h-full min-h-[176px] w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border/70 bg-transparent px-4 py-6 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:bg-card/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border/70 bg-transparent px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:bg-card/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
-                <Plus className="h-6 w-6" aria-hidden />
+                <Plus className="h-4 w-4" aria-hidden />
                 <span className="font-medium">Start a new club</span>
               </button>
             </li>
