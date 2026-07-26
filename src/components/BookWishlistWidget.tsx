@@ -467,7 +467,9 @@ const BookWishlistWidget = () => {
 
               {expandedId === s.id && (
                 <div className="ml-8 mt-0 mb-3 space-y-1.5 border-l-2 border-terracotta/20 pl-4">
-                  {comments.length === 0 ? (
+                  {commentsError ? (
+                    <p className="py-2 text-xs text-destructive font-body">Couldn't load comments.</p>
+                  ) : comments.length === 0 ? (
                     <p className="py-2 text-xs text-muted-foreground font-body">No comments yet</p>
                   ) : (
                     comments.map((c) => (
@@ -482,7 +484,9 @@ const BookWishlistWidget = () => {
                             type="button"
                             onClick={() => setPendingDelete({ type: 'comment', id: c.id })}
                             aria-label="Delete comment"
-                            className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-md text-muted-foreground/70 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+                            disabled={deletingComment === c.id}
+                            aria-busy={deletingComment === c.id}
+                            className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-md text-muted-foreground/70 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <X className="h-4 w-4" aria-hidden="true" />
                           </button>
@@ -500,13 +504,16 @@ const BookWishlistWidget = () => {
                       onChange={(e) => setNewComment(e.target.value)}
                       placeholder="Add a comment..."
                       aria-label="Add a comment"
-                      className="cozy-input flex-1 text-xs min-h-11"
+                      disabled={postingComment}
+                      className="cozy-input flex-1 text-xs min-h-11 disabled:opacity-60"
                       maxLength={300}
                     />
                     <button
                       type="submit"
                       aria-label="Send comment"
-                      className="cozy-btn-primary inline-flex items-center justify-center min-h-11 min-w-11 px-2"
+                      disabled={postingComment || !newComment.trim()}
+                      aria-busy={postingComment}
+                      className="cozy-btn-primary inline-flex items-center justify-center min-h-11 min-w-11 px-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Send className="h-4 w-4" aria-hidden="true" />
                     </button>
