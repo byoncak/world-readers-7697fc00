@@ -571,25 +571,28 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
               <div className="flex items-center gap-1 pt-1 border-t border-border/30">
                 <button
                   type="button"
+                  aria-label="Attach photo"
                   onClick={() => imageInputRef.current?.click()}
-                  className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground/70 hover:text-primary hover:bg-primary/10 transition-colors"
+                  className="min-h-11 min-w-11 rounded-md flex items-center justify-center text-muted-foreground/80 hover:text-primary hover:bg-primary/10 transition-colors"
                   title="Send photo"
                 >
-                  <Paperclip className="h-3.5 w-3.5" />
+                  <Paperclip className="h-4 w-4" aria-hidden="true" />
                 </button>
                 <button
                   type="button"
+                  aria-label="Attach video"
                   onClick={() => videoInputRef.current?.click()}
-                  className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground/70 hover:text-primary hover:bg-primary/10 transition-colors"
+                  className="min-h-11 min-w-11 rounded-md flex items-center justify-center text-muted-foreground/80 hover:text-primary hover:bg-primary/10 transition-colors"
                   title="Send video"
                 >
-                  <Video className="h-3.5 w-3.5" />
+                  <Video className="h-4 w-4" aria-hidden="true" />
                 </button>
                 <Popover open={showGifPicker} onOpenChange={setShowGifPicker}>
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="h-7 px-2 rounded-md text-[11px] font-semibold text-muted-foreground/70 hover:text-primary hover:bg-primary/10 transition-colors"
+                      aria-label="Search GIFs"
+                      className="min-h-11 min-w-11 px-2 rounded-md text-xs font-semibold text-muted-foreground/80 hover:text-primary hover:bg-primary/10 transition-colors"
                       title="Search GIFs"
                     >
                       GIF
@@ -612,12 +615,14 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
                 </Popover>
                 <button
                   type="submit"
+                  aria-label="Send message"
                   disabled={!newMessage.trim() || sending}
-                  className="ml-auto h-7 px-3 rounded-md text-xs font-semibold text-primary hover:text-primary hover:bg-primary/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+                  className="ml-auto min-h-11 px-4 rounded-md text-sm font-semibold text-primary hover:text-primary hover:bg-primary/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
                 >
-                  <Send className="h-3 w-3" />
+                  <Send className="h-4 w-4" aria-hidden="true" />
                   {sending ? 'Sending…' : 'Send'}
                 </button>
+
               </div>
             </form>
           </div>
