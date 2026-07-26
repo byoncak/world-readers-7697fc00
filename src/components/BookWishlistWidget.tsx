@@ -282,10 +282,11 @@ const BookWishlistWidget = () => {
         </div>
         {!userAlreadySuggested ? (
           <button
+            type="button"
             onClick={() => setShowForm(f => !f)}
             aria-label="Suggest a book"
             aria-expanded={showForm}
-            className="h-8 w-8 flex items-center justify-center rounded-full bg-terracotta text-white shadow-md hover:bg-terracotta/90 transition-all focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-terracotta text-white shadow-md hover:bg-terracotta/90 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Plus className={`h-4 w-4 transition-transform duration-200 ${showForm ? 'rotate-45' : ''}`} aria-hidden="true" />
           </button>
@@ -377,9 +378,11 @@ const BookWishlistWidget = () => {
                 <button
                   type="button"
                   onClick={() => toggleVote(s.id, s.user_voted)}
+                  disabled={pendingVotes.has(s.id)}
                   aria-label={s.user_voted ? `Remove vote (${s.vote_count})` : `Vote (${s.vote_count})`}
                   aria-pressed={s.user_voted}
-                  className="flex flex-col items-center justify-center gap-0.5 min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-ring rounded"
+                  aria-busy={pendingVotes.has(s.id)}
+                  className="flex flex-col items-center justify-center gap-0.5 min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-ring rounded disabled:opacity-60 disabled:cursor-wait"
                 >
                   <ThumbsUp
                     className={`h-4 w-4 transition-all duration-200 ${
