@@ -369,9 +369,10 @@ const CurrentBookWidget = () => {
                 href={book.pdf_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="absolute bottom-1.5 right-1.5 inline-flex items-center gap-1 rounded-lg bg-terracotta px-2.5 py-1 text-xs font-body font-semibold text-primary-foreground shadow-lg shadow-black/30 hover:brightness-110 transition whitespace-nowrap"
+                aria-label="Open book PDF"
+                className="absolute bottom-1.5 right-1.5 inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-lg bg-terracotta px-3 text-xs font-body font-semibold text-primary-foreground shadow-lg shadow-black/30 hover:brightness-110 transition whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <FileText className="h-3.5 w-3.5" />
+                <FileText className="h-3.5 w-3.5" aria-hidden="true" />
                 PDF
               </a>
             )}
@@ -525,8 +526,9 @@ const CurrentBookWidget = () => {
                       </span>
                     ) : (
                       <button
+                        type="button"
                         onClick={() => setCheerTarget({ userId: p.user_id, name: p.display_name || 'Reader' })}
-                        className="animate-cheer-pulse text-xs font-semibold text-soft-gold font-body whitespace-nowrap cursor-pointer hover:text-terracotta transition-colors"
+                        className="animate-cheer-pulse inline-flex min-h-11 items-center rounded-full px-3 text-xs font-semibold text-soft-gold font-body whitespace-nowrap cursor-pointer hover:text-terracotta hover:bg-soft-gold/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         👏 Cheer them on! 👏
                       </button>
