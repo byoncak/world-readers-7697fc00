@@ -806,7 +806,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
                   <button
                     key={m.user_id}
                     onClick={() => selectMember(m)}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-accent"
+                    className="flex w-full min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <UserAvatar
                       userId={m.user_id}
@@ -887,7 +887,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
                     </Link>
                     <button
                       onClick={() => { setShowMembers(false); selectMember(m); }}
-                      className="cozy-btn-ghost shrink-0 p-2 text-primary"
+                      className="cozy-btn-ghost inline-flex shrink-0 items-center justify-center min-h-11 min-w-11 text-primary"
                       title={`Message ${m.display_name || 'Reader'}`}
                     >
                       <Send className="h-4 w-4" />
