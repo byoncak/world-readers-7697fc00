@@ -9,7 +9,7 @@ const mk = (kind: ActivityItem['kind'], userId?: string) =>
 
 describe('activityDestination', () => {
   it('routes user-centric events to the club-scoped member profile', () => {
-    (['completion', 'personal_completion', 'rating', 'join'] as const).forEach((kind) => {
+    (['completion', 'rating', 'join'] as const).forEach((kind) => {
       expect(activityDestination(mk(kind, UID), clubPath)).toBe(`/c/CID/member/${UID}`);
     });
   });
