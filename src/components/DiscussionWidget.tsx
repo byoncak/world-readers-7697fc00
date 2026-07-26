@@ -516,13 +516,13 @@ const DiscussionWidget = () => {
               </div>
             )}
 
-            <form onSubmit={sendMessage} className="space-y-2">
+            <form ref={composerFormRef} onSubmit={sendMessage} className="space-y-2">
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
 
               <MentionInput
                 value={newMessage}
                 onChange={setNewMessage}
-                onSubmit={() => { document.querySelector('form')?.requestSubmit(); }}
+                onSubmit={() => composerFormRef.current?.requestSubmit()}
                 placeholder={replyTo ? 'Write a reply…' : 'Share a thought…'}
                 className="w-full min-h-[52px] resize-none border-0 bg-transparent px-0 py-1 text-sm leading-relaxed font-body focus:outline-none focus:ring-0 placeholder:text-muted-foreground/40"
                 maxLength={500}
