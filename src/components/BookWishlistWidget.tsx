@@ -8,7 +8,7 @@ import { BookHeart, ThumbsUp, Plus, MessageCircle, Send, X, Info } from 'lucide-
 import { formatDistanceToNow } from 'date-fns';
 import ConfirmDialog from './ConfirmDialog';
 import StyledName from './StyledName';
-import { ScrollArea } from '@/components/ui/scroll-area';
+
 import { searchGoogleBooks, type BookSearchResult } from '@/lib/googleBooks';
 
 interface SuggestionComment {
