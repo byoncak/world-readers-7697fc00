@@ -44,7 +44,7 @@ interface InboxViewProps {
 
 const InboxView = ({ embedded = false }: InboxViewProps) => {
   const { user } = useAuth();
-  const { clubId } = useClub();
+  const { clubId, clubPath } = useClub();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -66,6 +66,17 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   const composerFormRef = useRef<HTMLFormElement>(null);
   const chatParam = searchParams.get('chat');
   const dialogParam = searchParams.get('dialog');
+
+  // Reset conversation-scoped state when the active club changes so DMs and
+  // realtime handlers from a sibling club never leak into the new club's view.
+  useEffect(() => {
+    setActiveConvo(null);
+    setMessages([]);
+    setConversations([]);
+    setAllMembers([]);
+    setFetching(true);
+  }, [clubId]);
+
 
   const updateChatParam = useCallback((nextChatId: string | null, opts?: { replace?: boolean }) => {
     const params = new URLSearchParams(searchParams);
