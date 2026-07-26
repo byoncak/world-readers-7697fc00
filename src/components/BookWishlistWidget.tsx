@@ -11,6 +11,7 @@ import StyledName from './StyledName';
 import { toast } from 'sonner';
 
 import { searchGoogleBooks, type BookSearchResult } from '@/lib/googleBooks';
+import { cycleFilterFor, isStaleGen } from '@/lib/guards';
 
 interface SuggestionComment {
   id: string;
@@ -65,6 +66,11 @@ const BookWishlistWidget = () => {
   // Generation counter — bumped on club switch so late fetches for a
   // previously-active club can't overwrite the new club's suggestions.
   const genRef = useRef(0);
+  // Which suggestion's comments are currently expanded. Kept in a ref so
+  // async comment fetches/mutations can compare against the live value
+  // instead of a stale closure — rapidly switching between suggestions
+  // must not let the earlier response overwrite the newer expansion.
+  const expandedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     genRef.current += 1;
