@@ -148,14 +148,17 @@ const BookWishlistWidget = () => {
 
     setSubmitting(true);
     try {
-      await supabase.from('book_votes').insert({
+      const { error } = await supabase.from('book_votes').insert({
         user_id: user.id,
         club_id: clubId,
         suggestion_title: title.trim(),
         suggestion_author: author.trim(),
         book_id: currentBookId,
       } as any);
-
+      if (error) {
+        toast.error("Couldn't add your suggestion. Please try again.");
+        return;
+      }
       setTitle('');
       setAuthor('');
       setShowForm(false);
@@ -164,6 +167,7 @@ const BookWishlistWidget = () => {
       setSubmitting(false);
     }
   };
+
 
   const deleteSuggestion = async (id: string) => {
     await supabase.from('book_votes').delete().eq('id', id);
