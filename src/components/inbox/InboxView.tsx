@@ -39,6 +39,15 @@ const MAX_MEDIA_SIZE = 20 * 1024 * 1024;
 const IMAGE_PREFIX = '[image] ';
 const VIDEO_PREFIX = '[video] ';
 
+// Typed result so callers can decide whether to preserve a draft, retry,
+// or silently drop the outcome. `sendDirectMessage` owns the single
+// friendly toast for real failures — callers must NOT double-toast.
+type SendResult =
+  | { status: 'sent' }     // insert succeeded
+  | { status: 'retry' }    // transient failure; caller may preserve draft
+  | { status: 'invalid' }  // confirmed non-member; do not preserve draft
+  | { status: 'stale' };   // club/convo switched mid-send; no-op
+
 interface InboxViewProps {
   embedded?: boolean;
 }
@@ -152,8 +161,8 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     return data.signedUrl;
   }, [user]);
 
-  const sendDirectMessage = useCallback(async (message: string) => {
-    if (!user || !activeConvo || sending || !clubId) return false;
+  const sendDirectMessage = useCallback(async (message: string): Promise<SendResult> => {
+    if (!user || !activeConvo || sending || !clubId) return { status: 'stale' };
     const capturedGen = clubGenRef.current;
     const capturedClubId = clubId;
     const capturedReceiver = activeConvo.otherUserId;
@@ -168,20 +177,22 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .maybeSingle();
     // After the async boundary, re-confirm we're still in the same club,
     // targeting the same conversation, before we do anything with the
-    // membership result — a stale response must not send.
-    if (isStaleGen(capturedGen, clubGenRef.current)) return false;
-    if (clubIdRef.current !== capturedClubId) return false;
-    if (activeConvoRef.current?.otherUserId !== capturedReceiver) return false;
+    // membership result — a stale response must not send, and callers
+    // must not restore an old draft into the new conversation.
+    if (isStaleGen(capturedGen, clubGenRef.current)) return { status: 'stale' };
+    if (clubIdRef.current !== capturedClubId) return { status: 'stale' };
+    if (activeConvoRef.current?.otherUserId !== capturedReceiver) return { status: 'stale' };
     if (memErr) {
       // Distinguish a transient membership-query failure from a confirmed
       // non-member so we don't tell the user their friend "isn't in this
-      // club" when the check itself just failed.
+      // club" when the check itself just failed. This is the single
+      // friendly toast for the failure — callers must not double-toast.
       toast.error("Couldn't verify membership. Please try again.");
-      return false;
+      return { status: 'retry' };
     }
     if (!membership) {
       toast.error('That reader is no longer in this club.');
-      return false;
+      return { status: 'invalid' };
     }
 
     const optimisticMsg = buildOptimisticMessage(message, capturedReceiver);
@@ -200,10 +211,11 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       if (!isStaleGen(capturedGen, clubGenRef.current)) {
         setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
       }
-      return false;
+      toast.error('Failed to send message.');
+      return { status: 'retry' };
     }
 
-    return true;
+    return { status: 'sent' };
   }, [activeConvo, buildOptimisticMessage, pushOptimisticMessage, sending, user, clubId]);
 
   // Fetch conversation list — scoped to the current club so a user active in
@@ -435,10 +447,14 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     setSending(true);
     setNewMessage('');
 
-    const ok = await sendDirectMessage(text);
-    if (!ok) {
+    const result = await sendDirectMessage(text);
+    // Only restore the draft for a genuinely retryable failure. On
+    // 'invalid' (non-member) or 'stale' (club/convo switched mid-send)
+    // we must NOT inject the old draft into the new conversation.
+    // sendDirectMessage already emitted the single friendly toast, so
+    // we do not toast again here.
+    if (result.status === 'retry') {
       setNewMessage(text);
-      toast.error('Failed to send message.');
     }
     setSending(false);
   };
@@ -448,8 +464,8 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     setSending(true);
     setShowGifPicker(false);
 
-    const ok = await sendDirectMessage(url);
-    if (!ok) toast.error('Failed to send GIF.');
+    // sendDirectMessage owns the single failure toast; don't double-toast.
+    await sendDirectMessage(url);
     setSending(false);
   };
 
@@ -467,10 +483,8 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     }
 
     const message = `${kind === 'image' ? IMAGE_PREFIX : VIDEO_PREFIX}${uploadedUrl}`;
-    const ok = await sendDirectMessage(message);
-    if (!ok) {
-      toast.error(`Failed to send ${kind}.`);
-    }
+    // sendDirectMessage owns the single failure toast; don't double-toast.
+    await sendDirectMessage(message);
     setSending(false);
   };
 

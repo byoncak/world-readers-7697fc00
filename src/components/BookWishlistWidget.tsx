@@ -90,6 +90,18 @@ const BookWishlistWidget = () => {
     setDeletingComment(null);
     setPostingComment(false);
     setCommentsError(false);
+    // A pending addSuggestion intentionally skips its own setSubmitting(false)
+    // when stale, and the "search a book" panel keeps its own draft/loading
+    // state. Reset those too so the new club can't inherit a permanently
+    // disabled submit button or stale search chips.
+    setSubmitting(false);
+    setLoading(false);
+    setShowForm(false);
+    setTitle('');
+    setAuthor('');
+    setBookQuery('');
+    setBookResults([]);
+    setSearchingBooks(false);
     if (!clubId) return;
     const gen = genRef.current;
     (async () => {
