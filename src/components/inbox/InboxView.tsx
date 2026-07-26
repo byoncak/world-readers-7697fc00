@@ -458,14 +458,16 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       <div className={`flex h-full min-h-0 flex-col overflow-hidden ${embedded ? '' : 'mx-auto max-w-2xl px-4 py-2 sm:py-6'}`}>
         <div className="mb-2 flex shrink-0 items-center gap-3">
           <button
+            type="button"
+            aria-label="Back to conversations"
             onClick={() => {
               setShowGifPicker(false);
               if (window.history.length > 1) navigate(-1);
               else updateChatParam(null);
             }}
-            className="cozy-btn-ghost p-2 shrink-0"
+            className="cozy-btn-ghost shrink-0 flex items-center justify-center min-h-11 min-w-11 p-2"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
           </button>
           <UserAvatar
             userId={activeConvo.otherUserId}
