@@ -10,6 +10,7 @@ import { format, differenceInCalendarDays, startOfDay } from 'date-fns';
 import CheerDialog from '@/components/CheerDialog';
 import StyledName from '@/components/StyledName';
 import { celebrateFromElement } from '@/lib/celebrate';
+import { clampPage, isStaleGen } from '@/lib/guards';
 
 interface Book {
   id: string;
