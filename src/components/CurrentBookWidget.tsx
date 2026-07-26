@@ -149,9 +149,12 @@ const CurrentBookWidget = () => {
 
       setProgress(merged);
       const mine = merged.find((p: any) => p.user_id === user?.id);
-      if (mine) setMyPage(mine.current_page);
+      // If the current user has no progress row for this book, reset local
+      // page to 0 so a previous club's page never leaks into the new one.
+      setMyPage(mine ? mine.current_page : 0);
     } else {
       setProgress([]);
+      setMyPage(0);
     }
   };
 
