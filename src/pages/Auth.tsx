@@ -3,6 +3,7 @@ import { Navigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { validateAuthForm } from '@/lib/guards';
 
 import worldReadersLogo from '@/assets/world-readers-logo.png.asset.json';
 
