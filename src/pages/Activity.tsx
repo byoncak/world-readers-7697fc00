@@ -173,22 +173,29 @@ function Row({ item, clubPath }: { item: ActivityItem; clubPath: (p?: string) =>
 }
 
 const Activity = () => {
-  const { data, isLoading, isError } = useActivityFeed();
-  const { clubPath } = useClub();
+  const { data, isLoading, isError, refetch, isFetching } = useActivityFeed();
+  const { clubId, clubPath } = useClub();
   const [searchParams] = useSearchParams();
   const [pollSheetOpen, setPollSheetOpen] = useState(false);
   const [activePollCount, setActivePollCount] = useState(0);
 
   useEffect(() => {
+    // Poll indicator must be scoped to the current club so it doesn't leak
+    // active polls from sibling clubs the user also belongs to.
+    setActivePollCount(0);
+    if (!clubId) return;
+    let cancelled = false;
     const fetchActivePolls = async () => {
       const { count, error } = await supabase
         .from('polls')
         .select('*', { count: 'exact', head: true })
-        .eq('active', true);
-      if (!error) setActivePollCount(count || 0);
+        .eq('active', true)
+        .eq('club_id', clubId);
+      if (!cancelled && !error) setActivePollCount(count || 0);
     };
     fetchActivePolls();
-  }, []);
+    return () => { cancelled = true; };
+  }, [clubId]);
 
   useEffect(() => {
     if (searchParams.get('poll') === 'open') {
@@ -225,11 +232,24 @@ const Activity = () => {
       </header>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="book"><div/><div/><div/><div/><div/></div>
+        <div role="status" aria-live="polite" aria-label="Loading activity" className="flex items-center justify-center py-16">
+          <div className="book" aria-hidden="true"><div/><div/><div/><div/><div/></div>
         </div>
       ) : isError ? (
-        <p className="text-sm text-muted-foreground">Couldn&rsquo;t load activity. Pull down to retry.</p>
+        <div
+          role="alert"
+          className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-border/60 bg-muted/30 p-6 text-center"
+        >
+          <p className="text-sm text-muted-foreground">Couldn&rsquo;t load activity.</p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold shadow-sm hover:bg-muted/50 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {isFetching ? 'Retrying…' : 'Try again'}
+          </button>
+        </div>
       ) : !data || data.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/60 p-10 text-center">
           <p className="text-sm text-muted-foreground">Quiet day. Check back soon. 🪱</p>
@@ -250,6 +270,7 @@ const Activity = () => {
           ))}
         </div>
       )}
+
 
       <Sheet open={pollSheetOpen} onOpenChange={setPollSheetOpen}>
         <SheetContent side="bottom" className="h-[85dvh] flex flex-col rounded-t-2xl p-0">

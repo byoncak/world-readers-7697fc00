@@ -63,6 +63,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const composerFormRef = useRef<HTMLFormElement>(null);
   const chatParam = searchParams.get('chat');
   const dialogParam = searchParams.get('dialog');
 
@@ -504,7 +505,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
 
         <div className="shrink-0 px-2 pt-2 pb-3">
           <div className="rounded-2xl border border-border/40 bg-card px-3 pt-3 pb-3 shadow-[0_-6px_18px_-6px_hsl(var(--warm-brown)/0.14)]">
-            <form onSubmit={handleSend} className="space-y-2">
+            <form ref={composerFormRef} onSubmit={handleSend} className="space-y-2">
               <input
                 ref={imageInputRef}
                 type="file"
@@ -523,7 +524,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
               <MentionInput
                 value={newMessage}
                 onChange={setNewMessage}
-                onSubmit={() => { document.querySelector('form')?.requestSubmit(); }}
+                onSubmit={() => composerFormRef.current?.requestSubmit()}
                 placeholder="Type a message…"
                 className="w-full min-h-[52px] resize-none border-0 bg-transparent px-0 py-1 text-sm leading-relaxed font-body focus:outline-none focus:ring-0 placeholder:text-muted-foreground/40"
                 maxLength={1000}

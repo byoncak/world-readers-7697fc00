@@ -106,20 +106,44 @@ const AppHeader = () => {
                 <span className="hidden sm:inline">Admin</span>
               </Link>
             )}
-            <Link
-              to={clubId ? clubPath(`/member/${user?.id}`) : '/clubs'}
-              aria-label="View your profile"
-              className="transition-all hover:shadow-md rounded-full focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <UserAvatar
-                userId={user?.id || ''}
-                avatarUrl={profile?.avatar_url ?? null}
-                displayName={profile?.display_name ?? null}
-                size="sm"
-                className="hover:border-primary"
-                linkToProfile={false}
-              />
-            </Link>
+            {(() => {
+              // Resolve a real profile route. When we're not inside a club
+              // route, fall back to the most-recently-visited valid membership
+              // so the avatar never links back to /clubs (a dead-end).
+              const lastId = typeof window !== 'undefined' ? localStorage.getItem('lastClubId') : null;
+              const validLast = lastId && memberships.some((m) => m.club_id === lastId) ? lastId : null;
+              const resolvedClubId =
+                clubId ?? validLast ?? memberships[0]?.club_id ?? null;
+              const profileHref =
+                user?.id && resolvedClubId ? `/c/${resolvedClubId}/member/${user.id}` : null;
+              const avatarNode = (
+                <UserAvatar
+                  userId={user?.id || ''}
+                  avatarUrl={profile?.avatar_url ?? null}
+                  displayName={profile?.display_name ?? null}
+                  size="sm"
+                  className="hover:border-primary"
+                  linkToProfile={false}
+                />
+              );
+              return profileHref ? (
+                <Link
+                  to={profileHref}
+                  aria-label="View your profile"
+                  className="transition-all hover:shadow-md rounded-full focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {avatarNode}
+                </Link>
+              ) : (
+                <span
+                  role="img"
+                  aria-label={`Signed in as ${profile?.display_name ?? 'reader'} — join a club to view your profile`}
+                  className="rounded-full opacity-90"
+                >
+                  {avatarNode}
+                </span>
+              );
+            })()}
           </div>
         </div>
       </header>

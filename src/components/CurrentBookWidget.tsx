@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useClub } from '@/contexts/ClubContext';
@@ -56,6 +57,9 @@ const CurrentBookWidget = () => {
     if (!clubId) return;
     setBook(null);
     setProgress([]);
+    // Reset the local page to 0 immediately when club context changes so
+    // progress from a previously-viewed club never leaks into the new one.
+    setMyPage(0);
     fetchCurrentBook();
 
     // Best-effort local reset for self-cheer testing across page navigation
@@ -145,9 +149,12 @@ const CurrentBookWidget = () => {
 
       setProgress(merged);
       const mine = merged.find((p: any) => p.user_id === user?.id);
-      if (mine) setMyPage(mine.current_page);
+      // If the current user has no progress row for this book, reset local
+      // page to 0 so a previous club's page never leaks into the new one.
+      setMyPage(mine ? mine.current_page : 0);
     } else {
       setProgress([]);
+      setMyPage(0);
     }
   };
 
@@ -173,16 +180,17 @@ const CurrentBookWidget = () => {
     }
   };
 
-  const updateProgress = async () => {
+  const updateProgress = async (intendedPage: number) => {
     if (!book || !user || !clubId) return;
-    setUpdating(true);
     const total = book.total_pages || 1;
     const prevPage = progress.find((p) => p.user_id === user.id)?.current_page ?? 0;
-    // Clamp the new page to [0, total] so we never push over-max writes.
-    const newPage = Math.max(0, Math.min(total, myPage));
+    // Clamp the intended page to [0, total] so we never push over-max writes.
+    const newPage = Math.max(0, Math.min(total, Math.round(intendedPage)));
     const pagesGained = newPage - prevPage;
     const nowComplete = prevPage < total && newPage >= total;
-    await supabase
+
+    setUpdating(true);
+    const { error } = await supabase
       .from('reading_progress')
       .upsert({
         user_id: user.id,
@@ -191,6 +199,13 @@ const CurrentBookWidget = () => {
         current_page: newPage,
         last_updated: new Date().toISOString(),
       }, { onConflict: 'user_id,book_id' });
+    setUpdating(false);
+
+    if (error) {
+      // Keep the user's typed/slid page visible so they can retry.
+      toast.error("Couldn't save your progress. Please try again.");
+      return;
+    }
 
     // Best-effort: use the current user's known display name so their own
     // row never renders as "Reader" while we wait for the next fetch.
@@ -220,7 +235,6 @@ const CurrentBookWidget = () => {
         },
       ];
     });
-    setUpdating(false);
 
     // ── Celebrate the update ──
     setJustSaved(true);
@@ -240,6 +254,7 @@ const CurrentBookWidget = () => {
       }, 350);
     }
   };
+
 
   if (bookLoading && !book) {
     return (
@@ -349,7 +364,7 @@ const CurrentBookWidget = () => {
                 step={1}
                 value={[myPage]}
                 onValueChange={(val) => setMyPage(val[0])}
-                onValueCommit={() => updateProgress()}
+                onValueCommit={(val) => updateProgress(val[0])}
                 aria-label="Your current page"
                 className="flex-1"
               />
@@ -360,8 +375,9 @@ const CurrentBookWidget = () => {
                     const val = Math.max(0, Math.min(totalPages, parseInt(pageInput) || 0));
                     setMyPage(val);
                     setEditingPage(false);
-                    // Auto-save typed value on submit so users never lose their edit.
-                    setTimeout(() => updateProgress(), 0);
+                    // Save the freshly-computed value directly so a stale
+                    // myPage closure never overwrites the user's edit.
+                    updateProgress(val);
                   }}
                   className="min-w-[60px]"
                 >
@@ -376,7 +392,7 @@ const CurrentBookWidget = () => {
                       const val = Math.max(0, Math.min(totalPages, parseInt(pageInput) || 0));
                       setMyPage(val);
                       setEditingPage(false);
-                      setTimeout(() => updateProgress(), 0);
+                      updateProgress(val);
                     }}
                     aria-label="Type a page number"
                     className="w-[78px] rounded-lg border-2 border-terracotta bg-background px-2 py-1 text-center text-sm font-semibold text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40"

@@ -8,7 +8,8 @@ import { BookHeart, ThumbsUp, Plus, MessageCircle, Send, X, Info } from 'lucide-
 import { formatDistanceToNow } from 'date-fns';
 import ConfirmDialog from './ConfirmDialog';
 import StyledName from './StyledName';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
+
 import { searchGoogleBooks, type BookSearchResult } from '@/lib/googleBooks';
 
 interface SuggestionComment {
@@ -53,12 +54,37 @@ const BookWishlistWidget = () => {
     ? suggestions.some(s => s.user_id === user?.id && (s as any).book_id === currentBookId)
     : suggestions.some(s => s.user_id === user?.id);
 
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   useEffect(() => {
     setSuggestions([]);
     setCurrentBookId(null);
+    setLoadError(null);
     if (!clubId) return;
-    fetchCurrentBook();
-    fetchSuggestions();
+    // Sequence: resolve the current book first so we can scope suggestions
+    // to the active cycle. Historical rounds (older book_id) never appear.
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const { data: current, error: bookErr } = await supabase
+        .from('books')
+        .select('id')
+        .eq('status', 'current')
+        .eq('club_id', clubId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (bookErr) {
+        setLoadError('Could not load suggestions.');
+        setLoading(false);
+        return;
+      }
+      const bookId = current?.id || null;
+      setCurrentBookId(bookId);
+      await fetchSuggestions(bookId);
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, [clubId]);
 
   useEffect(() => {
@@ -83,25 +109,21 @@ const BookWishlistWidget = () => {
     return () => { clearTimeout(t); ctrl.abort(); };
   }, [bookQuery]);
 
-  const fetchCurrentBook = async () => {
+  const fetchSuggestions = async (bookId: string | null = currentBookId) => {
     if (!clubId) return;
-    const { data } = await supabase
-      .from('books')
-      .select('id')
-      .eq('status', 'current')
-      .eq('club_id', clubId)
-      .maybeSingle();
-    setCurrentBookId(data?.id || null);
-  };
-
-  const fetchSuggestions = async () => {
-    if (!clubId) return;
-    const { data: votes } = await supabase
+    let query = supabase
       .from('book_votes')
       .select('*, profiles(display_name)')
       .eq('club_id', clubId)
       .order('created_at', { ascending: false });
-
+    // Only show suggestions from the current cycle when there is one.
+    if (bookId) query = query.eq('book_id', bookId);
+    const { data: votes, error } = await query;
+    if (error) {
+      setLoadError('Could not load suggestions.');
+      return;
+    }
+    setLoadError(null);
     if (!votes) return;
 
     const suggestionIds = votes.map((v: any) => v.id);
@@ -119,20 +141,24 @@ const BookWishlistWidget = () => {
     setSuggestions(enriched);
   };
 
+
   const addSuggestion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !author.trim() || !user || submitting) return;
 
     setSubmitting(true);
     try {
-      await supabase.from('book_votes').insert({
+      const { error } = await supabase.from('book_votes').insert({
         user_id: user.id,
         club_id: clubId,
         suggestion_title: title.trim(),
         suggestion_author: author.trim(),
         book_id: currentBookId,
       } as any);
-
+      if (error) {
+        toast.error("Couldn't add your suggestion. Please try again.");
+        return;
+      }
       setTitle('');
       setAuthor('');
       setShowForm(false);
@@ -141,6 +167,7 @@ const BookWishlistWidget = () => {
       setSubmitting(false);
     }
   };
+
 
   const deleteSuggestion = async (id: string) => {
     await supabase.from('book_votes').delete().eq('id', id);
@@ -268,41 +295,50 @@ const BookWishlistWidget = () => {
               </div>
             )}
           </div>
+          <label htmlFor="wl-title" className="sr-only">Book title</label>
           <input
+            id="wl-title"
+            name="wl-title"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Book title"
-            className="cozy-input w-full"
+            aria-label="Book title"
+            className="cozy-input w-full min-h-11"
             maxLength={200}
             required
           />
+          <label htmlFor="wl-author" className="sr-only">Author</label>
           <input
+            id="wl-author"
+            name="wl-author"
             type="text"
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
             placeholder="Author"
-            className="cozy-input w-full"
+            aria-label="Author"
+            className="cozy-input w-full min-h-11"
             maxLength={200}
             required
           />
-          <button type="submit" disabled={submitting} className="cozy-btn-primary w-full text-sm disabled:opacity-50">
+          <button type="submit" disabled={submitting} className="cozy-btn-primary w-full text-sm min-h-11 disabled:opacity-50">
             {submitting ? 'Adding…' : '🌟 Add Suggestion'}
           </button>
         </form>
       )}
 
       {suggestions.length > 0 ? (
-        <ScrollArea className="h-72 -mx-1 [mask-image:linear-gradient(to_bottom,black_calc(100%-24px),transparent)]">
+        <div className="-mx-1 sm:h-72 sm:overflow-y-auto">
           <div className="divide-y divide-border/40 px-1">
           {suggestions.map((s) => (
             <div key={s.id}>
               <div className="group relative flex items-start gap-3 py-3 transition-colors hover:bg-cream/30 rounded-md px-1">
                 <button
+                  type="button"
                   onClick={() => toggleVote(s.id, s.user_voted)}
                   aria-label={s.user_voted ? `Remove vote (${s.vote_count})` : `Vote (${s.vote_count})`}
                   aria-pressed={s.user_voted}
-                  className="flex flex-col items-center gap-0.5 pt-0.5 focus-visible:ring-2 focus-visible:ring-ring rounded"
+                  className="flex flex-col items-center justify-center gap-0.5 min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-ring rounded"
                 >
                   <ThumbsUp
                     className={`h-4 w-4 transition-all duration-200 ${
@@ -327,21 +363,24 @@ const BookWishlistWidget = () => {
                     {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}
                   </p>
                 </div>
-                <div className="flex items-center gap-0.5 pt-0.5">
+                <div className="flex items-center gap-0.5">
                   <button
+                    type="button"
                     onClick={() => toggleComments(s.id)}
-                    className={`flex items-center gap-1 px-1.5 py-1 rounded-md transition-colors ${expandedId === s.id ? 'text-terracotta bg-terracotta/10' : 'text-muted-foreground/60 hover:text-terracotta'}`}
-                    title="Comments"
+                    aria-label={expandedId === s.id ? 'Hide comments' : 'Show comments'}
+                    aria-expanded={expandedId === s.id}
+                    className={`inline-flex items-center justify-center min-h-11 min-w-11 rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-ring ${expandedId === s.id ? 'text-terracotta bg-terracotta/10' : 'text-muted-foreground/70 hover:text-terracotta'}`}
                   >
-                    <MessageCircle className="h-3.5 w-3.5" />
+                    <MessageCircle className="h-4 w-4" aria-hidden="true" />
                   </button>
                   {(user?.id === s.user_id || isPrivileged) && (
                     <button
+                      type="button"
                       onClick={() => setPendingDelete({ type: 'suggestion', id: s.id })}
-                      className="p-1 rounded-md text-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-all"
-                      title={isPrivileged && user?.id !== s.user_id ? 'Remove (admin)' : 'Delete'}
+                      aria-label={isPrivileged && user?.id !== s.user_id ? 'Remove suggestion (admin)' : 'Delete suggestion'}
+                      className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-md text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-ring transition-all"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <X className="h-4 w-4" aria-hidden="true" />
                     </button>
                   )}
                 </div>
@@ -356,28 +395,41 @@ const BookWishlistWidget = () => {
                       <div key={c.id} className="flex items-start gap-2 text-xs font-body">
                         <div className="flex-1">
                           <StyledName userId={c.user_id} name={(c.profiles as any)?.display_name || 'Reader'} className="font-semibold text-[11px]" />
-                          <span className="text-[10px] text-muted-foreground/60"> · {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}</span>
+                          <span className="text-[11px] text-muted-foreground"> · {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}</span>
                           <p className="mt-0.5 text-xs">{c.message}</p>
                         </div>
                         {(user?.id === c.user_id || isPrivileged) && (
-                          <button onClick={() => setPendingDelete({ type: 'comment', id: c.id })} className="mt-1 text-muted-foreground/40 hover:text-destructive transition-colors">
-                            <X className="h-3 w-3" />
+                          <button
+                            type="button"
+                            onClick={() => setPendingDelete({ type: 'comment', id: c.id })}
+                            aria-label="Delete comment"
+                            className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-md text-muted-foreground/70 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+                          >
+                            <X className="h-4 w-4" aria-hidden="true" />
                           </button>
                         )}
                       </div>
                     ))
                   )}
                   <form onSubmit={addComment} className="flex gap-1.5 pt-1">
+                    <label htmlFor={`wl-cmt-${s.id}`} className="sr-only">Add a comment</label>
                     <input
+                      id={`wl-cmt-${s.id}`}
+                      name={`wl-cmt-${s.id}`}
                       type="text"
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       placeholder="Add a comment..."
-                      className="cozy-input flex-1 text-xs py-1"
+                      aria-label="Add a comment"
+                      className="cozy-input flex-1 text-xs min-h-11"
                       maxLength={300}
                     />
-                    <button type="submit" className="cozy-btn-primary py-1 px-2">
-                      <Send className="h-3 w-3" />
+                    <button
+                      type="submit"
+                      aria-label="Send comment"
+                      className="cozy-btn-primary inline-flex items-center justify-center min-h-11 min-w-11 px-2"
+                    >
+                      <Send className="h-4 w-4" aria-hidden="true" />
                     </button>
                   </form>
                 </div>
@@ -385,12 +437,31 @@ const BookWishlistWidget = () => {
             </div>
           ))}
           </div>
-        </ScrollArea>
+        </div>
+
+      ) : loading ? (
+        <p role="status" aria-live="polite" className="py-4 text-center text-sm text-muted-foreground font-body">
+          Loading suggestions…
+        </p>
+      ) : loadError ? (
+        <div role="alert" className="py-4 text-center text-sm text-destructive font-body">
+          {loadError}
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={() => fetchSuggestions()}
+              className="min-h-11 px-3 rounded-lg border border-border bg-card text-sm hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
       ) : !showForm ? (
         <p className="py-4 text-center text-sm text-muted-foreground font-body">
           No suggestions yet. Add your favorite! 📚
         </p>
       ) : null}
+
 
       <ConfirmDialog
         open={!!pendingDelete}
