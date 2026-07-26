@@ -384,7 +384,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
         .eq('club_id', clubId)
         .eq('user_id', chatParam)
         .maybeSingle();
-      if (cancelled || capturedGen !== clubGenRef.current) return;
+      if (cancelled || isStaleGen(capturedGen, clubGenRef.current)) return;
       if (memErr || !membership) {
         toast.error('That reader isn\u2019t in this club.');
         const params = new URLSearchParams(searchParams);
@@ -404,7 +404,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
         .select('display_name, avatar_url')
         .eq('user_id', chatParam)
         .maybeSingle();
-      if (cancelled || capturedGen !== clubGenRef.current) return;
+      if (cancelled || isStaleGen(capturedGen, clubGenRef.current)) return;
       setActiveConvo({
         otherUserId: chatParam,
         otherUserName: p?.display_name || 'Reader',
@@ -499,7 +499,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
         .from('club_members')
         .select('user_id, profile:profiles!inner(user_id, display_name, avatar_url)')
         .eq('club_id', clubId);
-      if (capturedGen !== clubGenRef.current) return;
+      if (isStaleGen(capturedGen, clubGenRef.current)) return;
       if (data) {
         const rows = (data as any[])
           .map((r) => r.profile)
