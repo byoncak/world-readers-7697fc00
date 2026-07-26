@@ -172,14 +172,16 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     return true;
   }, [activeConvo, buildOptimisticMessage, pushOptimisticMessage, sending, user, clubId]);
 
-  // Fetch conversation list
+  // Fetch conversation list — scoped to the current club so a user active in
+  // multiple clubs does not see DMs across them.
   const fetchConversations = useCallback(async () => {
-    if (!user) return;
+    if (!user || !clubId) { setFetching(false); return; }
     setConvError(false);
 
     const { data: allMessages, error: fetchErr } = await supabase
       .from('direct_messages')
       .select('*')
+      .eq('club_id', clubId)
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order('created_at', { ascending: false });
 
@@ -221,15 +223,16 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     convos.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
     setConversations(convos);
     setFetching(false);
-  }, [user]);
+  }, [user, clubId]);
 
   const fetchMessages = useCallback(async () => {
-    if (!user || !activeConvo) return;
+    if (!user || !activeConvo || !clubId) return;
     const otherId = activeConvo.otherUserId;
 
     const { data } = await supabase
       .from('direct_messages')
       .select('*')
+      .eq('club_id', clubId)
       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${user.id})`)
       .order('created_at', { ascending: true });
 
@@ -238,6 +241,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     await supabase
       .from('direct_messages')
       .update({ read: true })
+      .eq('club_id', clubId)
       .eq('sender_id', otherId)
       .eq('receiver_id', user.id)
       .eq('read', false);
@@ -245,48 +249,57 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     setConversations(prev =>
       prev.map(c => c.otherUserId === otherId ? { ...c, unreadCount: 0 } : c)
     );
-  }, [user, activeConvo]);
+  }, [user, activeConvo, clubId]);
 
   const activeConvoRef = useRef(activeConvo);
   activeConvoRef.current = activeConvo;
+  const clubIdRef = useRef(clubId);
+  clubIdRef.current = clubId;
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !clubId) return;
     fetchConversations();
 
     const channel = supabase
-      .channel('inbox-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages' }, (payload) => {
-        const msg = payload.new as Message;
-        const convo = activeConvoRef.current;
-        if (convo && (
-          (msg.sender_id === user.id && msg.receiver_id === convo.otherUserId) ||
-          (msg.sender_id === convo.otherUserId && msg.receiver_id === user.id)
-        )) {
-          setMessages(prev => {
-            if (prev.some(m => m.id === msg.id)) return prev;
-            const optimisticIdx = prev.findIndex(m =>
-              m.sender_id === msg.sender_id &&
-              m.message === msg.message &&
-              Math.abs(new Date(m.created_at).getTime() - new Date(msg.created_at).getTime()) < 10000
-            );
-            if (optimisticIdx !== -1) {
-              const updated = [...prev];
-              updated[optimisticIdx] = msg;
-              return updated;
+      .channel(`inbox-realtime:${clubId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'direct_messages', filter: `club_id=eq.${clubId}` },
+        (payload) => {
+          const msg = payload.new as Message & { club_id?: string };
+          // Defense-in-depth: also ignore cross-club rows that slip through.
+          if (msg.club_id && msg.club_id !== clubIdRef.current) return;
+          const convo = activeConvoRef.current;
+          if (convo && (
+            (msg.sender_id === user.id && msg.receiver_id === convo.otherUserId) ||
+            (msg.sender_id === convo.otherUserId && msg.receiver_id === user.id)
+          )) {
+            setMessages(prev => {
+              if (prev.some(m => m.id === msg.id)) return prev;
+              const optimisticIdx = prev.findIndex(m =>
+                m.sender_id === msg.sender_id &&
+                m.message === msg.message &&
+                Math.abs(new Date(m.created_at).getTime() - new Date(msg.created_at).getTime()) < 10000
+              );
+              if (optimisticIdx !== -1) {
+                const updated = [...prev];
+                updated[optimisticIdx] = msg;
+                return updated;
+              }
+              return [...prev, msg];
+            });
+            if (msg.receiver_id === user.id) {
+              supabase.from('direct_messages').update({ read: true }).eq('id', msg.id).then();
             }
-            return [...prev, msg];
-          });
-          if (msg.receiver_id === user.id) {
-            supabase.from('direct_messages').update({ read: true }).eq('id', msg.id).then();
           }
+          fetchConversations();
         }
-        fetchConversations();
-      })
+      )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user, fetchConversations]);
+  }, [user, clubId, fetchConversations]);
+
 
   useEffect(() => {
     if (activeConvo) fetchMessages();
