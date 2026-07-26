@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -56,15 +56,20 @@ const BookWishlistWidget = () => {
 
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Track voting state per suggestion id to disable rapid re-clicks.
+  const [pendingVotes, setPendingVotes] = useState<Set<string>>(new Set());
+  // Generation counter — bumped on club switch so late fetches for a
+  // previously-active club can't overwrite the new club's suggestions.
+  const genRef = useRef(0);
 
   useEffect(() => {
+    genRef.current += 1;
     setSuggestions([]);
     setCurrentBookId(null);
     setLoadError(null);
+    setPendingVotes(new Set());
     if (!clubId) return;
-    // Sequence: resolve the current book first so we can scope suggestions
-    // to the active cycle. Historical rounds (older book_id) never appear.
-    let cancelled = false;
+    const gen = genRef.current;
     (async () => {
       setLoading(true);
       const { data: current, error: bookErr } = await supabase
@@ -73,7 +78,7 @@ const BookWishlistWidget = () => {
         .eq('status', 'current')
         .eq('club_id', clubId)
         .maybeSingle();
-      if (cancelled) return;
+      if (gen !== genRef.current) return;
       if (bookErr) {
         setLoadError('Could not load suggestions.');
         setLoading(false);
@@ -81,10 +86,9 @@ const BookWishlistWidget = () => {
       }
       const bookId = current?.id || null;
       setCurrentBookId(bookId);
-      await fetchSuggestions(bookId);
-      if (!cancelled) setLoading(false);
+      await fetchSuggestions(bookId, gen);
+      if (gen === genRef.current) setLoading(false);
     })();
-    return () => { cancelled = true; };
   }, [clubId]);
 
   useEffect(() => {
@@ -109,16 +113,27 @@ const BookWishlistWidget = () => {
     return () => { clearTimeout(t); ctrl.abort(); };
   }, [bookQuery]);
 
-  const fetchSuggestions = async (bookId: string | null = currentBookId) => {
+  const fetchSuggestions = async (
+    bookId: string | null = currentBookId,
+    gen: number = genRef.current,
+  ) => {
     if (!clubId) return;
     let query = supabase
       .from('book_votes')
       .select('*, profiles(display_name)')
       .eq('club_id', clubId)
       .order('created_at', { ascending: false });
-    // Only show suggestions from the current cycle when there is one.
-    if (bookId) query = query.eq('book_id', bookId);
+    // Scope to the current cycle: when a current book exists, only that
+    // cycle's suggestions; when there is none, only suggestions that were
+    // filed without a book_id (unassigned upcoming cycle). This prevents
+    // stale, resolved-cycle suggestions from leaking back into the list.
+    if (bookId) {
+      query = query.eq('book_id', bookId);
+    } else {
+      query = query.is('book_id', null);
+    }
     const { data: votes, error } = await query;
+    if (gen !== genRef.current) return;
     if (error) {
       setLoadError('Could not load suggestions.');
       return;
@@ -130,6 +145,8 @@ const BookWishlistWidget = () => {
     const { data: likes } = suggestionIds.length
       ? await supabase.from('vote_likes').select('suggestion_id, user_id').in('suggestion_id', suggestionIds)
       : { data: [] as any[] };
+
+    if (gen !== genRef.current) return;
 
     const enriched = votes.map((v: any) => ({
       ...v,
@@ -170,17 +187,41 @@ const BookWishlistWidget = () => {
 
 
   const deleteSuggestion = async (id: string) => {
-    await supabase.from('book_votes').delete().eq('id', id);
+    const { error } = await supabase.from('book_votes').delete().eq('id', id);
+    if (error) {
+      toast.error("Couldn't remove that suggestion. Please try again.");
+      return;
+    }
     if (expandedId === id) setExpandedId(null);
     fetchSuggestions();
   };
 
   const toggleVote = async (suggestionId: string, voted: boolean) => {
     if (!user) return;
+    // Ignore repeat clicks while the previous toggle for this suggestion
+    // hasn't resolved yet — Supabase inserts/deletes here aren't idempotent.
+    if (pendingVotes.has(suggestionId)) return;
+    setPendingVotes((prev) => {
+      const next = new Set(prev);
+      next.add(suggestionId);
+      return next;
+    });
+    let opErr: any = null;
     if (voted) {
-      await supabase.from('vote_likes').delete().eq('suggestion_id', suggestionId).eq('user_id', user.id);
+      const { error } = await supabase.from('vote_likes').delete().eq('suggestion_id', suggestionId).eq('user_id', user.id);
+      opErr = error;
     } else {
-      await supabase.from('vote_likes').insert({ user_id: user.id, suggestion_id: suggestionId, club_id: clubId } as any);
+      const { error } = await supabase.from('vote_likes').insert({ user_id: user.id, suggestion_id: suggestionId, club_id: clubId } as any);
+      opErr = error;
+    }
+    setPendingVotes((prev) => {
+      const next = new Set(prev);
+      next.delete(suggestionId);
+      return next;
+    });
+    if (opErr) {
+      toast.error("Couldn't save your vote. Please try again.");
+      return;
     }
     fetchSuggestions();
   };
@@ -241,10 +282,11 @@ const BookWishlistWidget = () => {
         </div>
         {!userAlreadySuggested ? (
           <button
+            type="button"
             onClick={() => setShowForm(f => !f)}
             aria-label="Suggest a book"
             aria-expanded={showForm}
-            className="h-8 w-8 flex items-center justify-center rounded-full bg-terracotta text-white shadow-md hover:bg-terracotta/90 transition-all focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-terracotta text-white shadow-md hover:bg-terracotta/90 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Plus className={`h-4 w-4 transition-transform duration-200 ${showForm ? 'rotate-45' : ''}`} aria-hidden="true" />
           </button>
@@ -336,9 +378,11 @@ const BookWishlistWidget = () => {
                 <button
                   type="button"
                   onClick={() => toggleVote(s.id, s.user_voted)}
+                  disabled={pendingVotes.has(s.id)}
                   aria-label={s.user_voted ? `Remove vote (${s.vote_count})` : `Vote (${s.vote_count})`}
                   aria-pressed={s.user_voted}
-                  className="flex flex-col items-center justify-center gap-0.5 min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-ring rounded"
+                  aria-busy={pendingVotes.has(s.id)}
+                  className="flex flex-col items-center justify-center gap-0.5 min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-ring rounded disabled:opacity-60 disabled:cursor-wait"
                 >
                   <ThumbsUp
                     className={`h-4 w-4 transition-all duration-200 ${

@@ -313,6 +313,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       if (activeConvo) setActiveConvo(null);
       return;
     }
+    if (!clubId) return;
     if (activeConvo?.otherUserId === chatParam) return;
     const existing = conversations.find(c => c.otherUserId === chatParam);
     if (existing) {
@@ -321,11 +322,30 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     }
     let cancelled = false;
     (async () => {
+      // Validate the target is actually a member of the active club before
+      // opening a chat — this prevents deep links from surfacing users who
+      // belong to a different club (RLS would still reject the send).
+      const { data: membership, error: memErr } = await supabase
+        .from('club_members')
+        .select('user_id')
+        .eq('club_id', clubId)
+        .eq('user_id', chatParam)
+        .maybeSingle();
+      if (cancelled) return;
+      if (memErr || !membership) {
+        toast.error('That reader isn\u2019t in this club.');
+        const params = new URLSearchParams(searchParams);
+        params.delete('chat');
+        setSearchParams(params, { replace: true });
+        return;
+      }
+
       const { data: p } = await supabase
         .from('profiles')
         .select('display_name, avatar_url')
         .eq('user_id', chatParam)
         .maybeSingle();
+      // Ignore results if the user switched clubs while we were checking.
       if (cancelled) return;
       setActiveConvo({
         otherUserId: chatParam,
@@ -337,7 +357,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       });
     })();
     return () => { cancelled = true; };
-  }, [chatParam, conversations, user, activeConvo]);
+  }, [chatParam, conversations, user, activeConvo, clubId, searchParams, setSearchParams]);
 
   useEffect(() => {
     setShowNewMsg(dialogParam === 'newMsg');

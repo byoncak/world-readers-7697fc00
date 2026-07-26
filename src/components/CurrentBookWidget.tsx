@@ -48,19 +48,37 @@ const CurrentBookWidget = () => {
   const myBarRef = useRef<HTMLDivElement>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const celebrateTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  // Monotonic generation counter — bumped when the active club changes so
+  // in-flight fetches and mutation completions cannot overwrite the new
+  // club's local state after they resolve late.
+  const genRef = useRef(0);
+  // Suppress a paired onBlur when the form's onSubmit already committed.
+  const commitLockRef = useRef(false);
+  // Prevent overlapping progress mutations (slider + typed input).
+  const savingRef = useRef(false);
+  // Last intended page the user asked us to save; kept so a failed save can
+  // be retried without losing the typed/slid value.
+  const pendingPageRef = useRef<number | null>(null);
 
   // Cheer state
   const [cheeredToday, setCheeredToday] = useState<Set<string>>(new Set());
   const [cheerTarget, setCheerTarget] = useState<{ userId: string; name: string } | null>(null);
 
   useEffect(() => {
+    // Bump the generation on every club change so stale in-flight results
+    // can be dropped by comparing against genRef.current at resolve time.
+    genRef.current += 1;
     if (!clubId) return;
     setBook(null);
     setProgress([]);
     // Reset the local page to 0 immediately when club context changes so
     // progress from a previously-viewed club never leaks into the new one.
     setMyPage(0);
-    fetchCurrentBook();
+    setUpdating(false);
+    setJustSaved(false);
+    savingRef.current = false;
+    pendingPageRef.current = null;
+    fetchCurrentBook(genRef.current);
 
     // Best-effort local reset for self-cheer testing across page navigation
     const resetAt = Number(localStorage.getItem('selfCheerResetAt') || '0');
@@ -78,7 +96,7 @@ const CurrentBookWidget = () => {
     clearTimeout(celebrateTimerRef.current);
   }, []);
 
-  const fetchCurrentBook = async () => {
+  const fetchCurrentBook = async (gen: number = genRef.current) => {
     if (!clubId) return;
     setBookLoading(true);
     setBookError(false);
@@ -89,6 +107,9 @@ const CurrentBookWidget = () => {
       .eq('club_id', clubId)
       .limit(1);
 
+    // Drop stale results — a newer club switch has invalidated this fetch.
+    if (gen !== genRef.current) return;
+
     if (error) {
       setBookError(true);
       setBookLoading(false);
@@ -97,19 +118,21 @@ const CurrentBookWidget = () => {
 
     if (books && books.length > 0) {
       setBook(books[0]);
-      // Run progress + cheers in parallel
-      const tasks: Promise<unknown>[] = [fetchProgress(books[0].id)];
-      if (user) tasks.push(fetchTodayCheers(books[0].id));
+      // Run progress + cheers in parallel, guarded by the same generation.
+      const tasks: Promise<unknown>[] = [fetchProgress(books[0].id, gen)];
+      if (user) tasks.push(fetchTodayCheers(books[0].id, gen));
       void Promise.all(tasks);
     }
     setBookLoading(false);
   };
 
-  const fetchProgress = async (bookId: string) => {
+  const fetchProgress = async (bookId: string, gen: number = genRef.current) => {
     const { data } = await supabase
       .from('reading_progress')
       .select('user_id, current_page, last_updated')
       .eq('book_id', bookId);
+
+    if (gen !== genRef.current) return;
 
     if (data && data.length > 0) {
       const userIds = data.map((p: any) => p.user_id);
@@ -127,8 +150,8 @@ const CurrentBookWidget = () => {
           .eq('equipped', true),
       ]);
 
-      // Warm the equipped-cosmetics cache so each <StyledName> render
-      // doesn't fire its own query for these users.
+      if (gen !== genRef.current) return;
+
       prefetchEquippedCosmetics(userIds, (inventory as any[]) ?? []);
 
       const progressBarMap = new Map<string, string>();
@@ -149,8 +172,6 @@ const CurrentBookWidget = () => {
 
       setProgress(merged);
       const mine = merged.find((p: any) => p.user_id === user?.id);
-      // If the current user has no progress row for this book, reset local
-      // page to 0 so a previous club's page never leaks into the new one.
       setMyPage(mine ? mine.current_page : 0);
     } else {
       setProgress([]);
@@ -158,7 +179,7 @@ const CurrentBookWidget = () => {
     }
   };
 
-  const fetchTodayCheers = async (bookId: string) => {
+  const fetchTodayCheers = async (bookId: string, gen: number = genRef.current) => {
     if (!user) return;
     const todayStart = startOfDay(new Date()).toISOString();
     const resetAt = Number(localStorage.getItem('selfCheerResetAt') || '0');
@@ -169,6 +190,8 @@ const CurrentBookWidget = () => {
       .eq('from_user_id', user.id)
       .eq('book_id', bookId)
       .gte('created_at', todayStart);
+
+    if (gen !== genRef.current) return;
 
     if (data) {
       const filtered = data.filter((c: any) => {
@@ -183,9 +206,21 @@ const CurrentBookWidget = () => {
   const updateProgress = async (intendedPage: number) => {
     if (!book || !user || !clubId) return;
     const total = book.total_pages || 1;
-    const prevPage = progress.find((p) => p.user_id === user.id)?.current_page ?? 0;
-    // Clamp the intended page to [0, total] so we never push over-max writes.
     const newPage = Math.max(0, Math.min(total, Math.round(intendedPage)));
+
+    // Track the latest intended page so a stale onBlur that duplicates the
+    // same value becomes a no-op after onSubmit already committed.
+    pendingPageRef.current = newPage;
+
+    const prevPage = progress.find((p) => p.user_id === user.id)?.current_page ?? 0;
+    if (newPage === prevPage) return;
+
+    // Reject overlapping mutations — the slider fires many rapid values and
+    // the input's onBlur can race with onSubmit. The last request wins by
+    // re-checking pendingPageRef when the in-flight one resolves.
+    if (savingRef.current) return;
+    savingRef.current = true;
+    const capturedGen = genRef.current;
     const pagesGained = newPage - prevPage;
     const nowComplete = prevPage < total && newPage >= total;
 
@@ -199,13 +234,27 @@ const CurrentBookWidget = () => {
         current_page: newPage,
         last_updated: new Date().toISOString(),
       }, { onConflict: 'user_id,book_id' });
+    savingRef.current = false;
     setUpdating(false);
 
+    // Drop the response if the user switched clubs while the write was
+    // in flight — the mutation is committed server-side but our local
+    // state now belongs to a different club.
+    if (capturedGen !== genRef.current) return;
+
     if (error) {
-      // Keep the user's typed/slid page visible so they can retry.
       toast.error("Couldn't save your progress. Please try again.");
       return;
     }
+
+    // If more edits queued up while we were saving, chase the latest value.
+    const queued = pendingPageRef.current;
+    if (queued !== null && queued !== newPage) {
+      pendingPageRef.current = null;
+      void updateProgress(queued);
+      return;
+    }
+    pendingPageRef.current = null;
 
     // Best-effort: use the current user's known display name so their own
     // row never renders as "Reader" while we wait for the next fetch.
@@ -272,8 +321,8 @@ const CurrentBookWidget = () => {
           <p className="text-sm text-muted-foreground font-body">Couldn't load the current book.</p>
           <button
             type="button"
-            onClick={fetchCurrentBook}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-card px-3 py-1.5 text-xs font-semibold text-foreground border border-border/60 shadow-sm hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => fetchCurrentBook()}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-card px-4 py-2 text-xs font-semibold text-foreground border border-border/60 shadow-sm hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Try again
           </button>
@@ -373,11 +422,15 @@ const CurrentBookWidget = () => {
                   onSubmit={(e) => {
                     e.preventDefault();
                     const val = Math.max(0, Math.min(totalPages, parseInt(pageInput) || 0));
+                    // Lock the commit so the input's paired onBlur, which
+                    // fires right after Enter, cannot double-submit.
+                    commitLockRef.current = true;
                     setMyPage(val);
                     setEditingPage(false);
-                    // Save the freshly-computed value directly so a stale
-                    // myPage closure never overwrites the user's edit.
                     updateProgress(val);
+                    // Release the lock on the next tick — after onBlur has
+                    // observed and skipped its duplicate write.
+                    setTimeout(() => { commitLockRef.current = false; }, 0);
                   }}
                   className="min-w-[60px]"
                 >
@@ -389,24 +442,26 @@ const CurrentBookWidget = () => {
                     value={pageInput}
                     onChange={(e) => setPageInput(e.target.value)}
                     onBlur={() => {
+                      if (commitLockRef.current) return;
                       const val = Math.max(0, Math.min(totalPages, parseInt(pageInput) || 0));
                       setMyPage(val);
                       setEditingPage(false);
                       updateProgress(val);
                     }}
                     aria-label="Type a page number"
-                    className="w-[78px] rounded-lg border-2 border-terracotta bg-background px-2 py-1 text-center text-sm font-semibold text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40"
+                    className="w-[88px] min-h-11 rounded-lg border-2 border-terracotta bg-background px-2 py-1 text-center text-sm font-semibold text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40"
                     autoFocus
                   />
                 </form>
               ) : (
                 <button
+                  type="button"
                   onClick={() => {
                     setPageInput(String(myPage));
                     setEditingPage(true);
                   }}
                   aria-label={`Change page number (currently ${myPage} of ${totalPages})`}
-                  className="inline-flex min-w-[78px] items-center justify-center gap-1 rounded-lg border border-border bg-muted/40 px-2 py-1 text-sm font-semibold text-foreground font-body hover:border-terracotta hover:bg-muted cursor-pointer transition-colors"
+                  className="inline-flex min-h-11 min-w-[88px] items-center justify-center gap-1 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm font-semibold text-foreground font-body hover:border-terracotta hover:bg-muted cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span className="text-terracotta">{myPage}</span>
                   <span className="text-muted-foreground">/{totalPages}</span>

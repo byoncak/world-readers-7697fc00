@@ -83,6 +83,18 @@ async function fetchFeed(clubId: string): Promise<ActivityItem[]> {
       .limit(LIMIT_PER_SOURCE),
   ]);
 
+  // Surface any Supabase error so the caller's retry UI can activate rather
+  // than silently rendering an incomplete feed.
+  const firstErr =
+    progressRes.error ||
+    quotesRes.error ||
+    ratingsRes.error ||
+    membersRes.error ||
+    votesRes.error ||
+    pollsRes.error ||
+    announcementsRes.error;
+  if (firstErr) throw firstErr;
+
   const userIds = new Set<string>();
   const bookIds = new Set<string>();
   const add = (rows: any[] | null, uKey?: string, bKey?: string) => {

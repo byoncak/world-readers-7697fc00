@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useClub } from '@/contexts/ClubContext';
@@ -36,18 +36,24 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
   const [votes, setVotes] = useState<PollVote[]>([]);
   const [profiles, setProfiles] = useState<Record<string, string>>({});
   const [error, setError] = useState(false);
+  // Track in-flight vote toggles per `${pollId}:${optionIndex}` so the same
+  // option can't be spammed and controls can render a disabled state.
+  const [saving, setSaving] = useState<Set<string>>(new Set());
+  // Generation counter — bumped on every club switch so late fetches for a
+  // previous club can't clobber the current club's state.
+  const genRef = useRef(0);
 
-  // Reset all local state when switching clubs, so polls from a sibling
-  // club never briefly render into the new club's context.
   useEffect(() => {
+    genRef.current += 1;
     setPolls([]);
     setVotes([]);
     setProfiles({});
     setError(false);
-    if (clubId) fetchPolls(clubId);
+    setSaving(new Set());
+    if (clubId) fetchPolls(clubId, genRef.current);
   }, [clubId]);
 
-  const fetchPolls = async (activeClubId: string) => {
+  const fetchPolls = async (activeClubId: string, gen: number = genRef.current) => {
     const { data: pollData, error: pollErr } = await supabase
       .from('polls')
       .select('*')
@@ -55,6 +61,7 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
       .eq('club_id', activeClubId)
       .order('created_at', { ascending: false });
 
+    if (gen !== genRef.current) return;
     if (pollErr) { setError(true); return; }
     if (!pollData) return;
 
@@ -70,6 +77,7 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
         .from('poll_votes')
         .select('poll_id, user_id, option_index')
         .in('poll_id', pollIds);
+      if (gen !== genRef.current) return;
       setVotes((voteData as PollVote[]) || []);
     } else {
       setVotes([]);
@@ -81,6 +89,7 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
         .from('profiles')
         .select('user_id, display_name')
         .in('user_id', creatorIds);
+      if (gen !== genRef.current) return;
       if (profileData) {
         const map: Record<string, string> = {};
         profileData.forEach((p: any) => { map[p.user_id] = p.display_name || 'Reader'; });
@@ -91,9 +100,19 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
 
   const toggleVote = async (pollId: string, optionIndex: number, poll: Poll) => {
     if (!user || !clubId) return;
+    const key = `${pollId}:${optionIndex}`;
+    // Ignore repeat clicks while a write for the same option is in flight.
+    if (saving.has(key)) return;
 
     const myVotes = votes.filter(v => v.poll_id === pollId && v.user_id === user.id);
     const alreadyVoted = myVotes.some(v => v.option_index === optionIndex);
+    const capturedGen = genRef.current;
+
+    setSaving((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
 
     let opErr: any = null;
     if (alreadyVoted) {
@@ -106,25 +125,40 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
       opErr = error;
     } else {
       if (!poll.multiple_choice && myVotes.length > 0) {
-        await supabase
+        const { error: delErr } = await supabase
           .from('poll_votes')
           .delete()
           .eq('poll_id', pollId)
           .eq('user_id', user.id);
+        // If clearing prior single-choice votes fails, abort the insert to
+        // avoid leaving the user with two votes on a single-choice poll.
+        if (delErr) opErr = delErr;
       }
-      const { error } = await supabase.from('poll_votes').insert({
-        poll_id: pollId,
-        user_id: user.id,
-        club_id: clubId,
-        option_index: optionIndex,
-      } as any);
-      opErr = error;
+      if (!opErr) {
+        const { error } = await supabase.from('poll_votes').insert({
+          poll_id: pollId,
+          user_id: user.id,
+          club_id: clubId,
+          option_index: optionIndex,
+        } as any);
+        opErr = error;
+      }
     }
+
+    setSaving((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+
+    // Ignore results from a poll interaction on a club we've since left.
+    if (capturedGen !== genRef.current) return;
+
     if (opErr) {
       toast.error("Couldn't record your vote. Try again.");
       return;
     }
-    fetchPolls(clubId);
+    fetchPolls(clubId, capturedGen);
   };
 
   if (error) {
@@ -167,12 +201,17 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
                 const optVotes = pollVotes.filter(v => v.option_index === idx).length;
                 const pct = totalVoters > 0 ? Math.round((optVotes / totalVoters) * 100) : 0;
                 const isSelected = myVotes.some(v => v.option_index === idx);
+                const isSaving = saving.has(`${poll.id}:${idx}`);
 
                 return (
                   <button
                     key={idx}
+                    type="button"
                     onClick={() => toggleVote(poll.id, idx, poll)}
-                    className={`relative w-full overflow-hidden rounded-lg border text-left transition-all duration-200 ${
+                    disabled={isSaving}
+                    aria-pressed={isSelected}
+                    aria-busy={isSaving}
+                    className={`relative w-full min-h-11 overflow-hidden rounded-lg border text-left transition-all duration-200 disabled:opacity-60 disabled:cursor-wait ${
                       isSelected
                         ? 'border-terracotta bg-terracotta/5'
                         : 'border-border hover:border-terracotta/40'
@@ -184,7 +223,7 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
                         style={{ width: `${pct}%` }}
                       />
                     )}
-                    <div className="relative flex items-center gap-2 px-3 py-2">
+                    <div className="relative flex min-h-11 items-center gap-2 px-3 py-2">
                       <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                         isSelected ? 'border-terracotta bg-terracotta text-white' : 'border-muted-foreground/30'
                       }`}>

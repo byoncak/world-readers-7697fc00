@@ -106,23 +106,39 @@ const Auth = () => {
     setError('');
     setSuccess('');
 
+    // Client-side validation runs BEFORE any backend call so empty/short
+    // password submissions never reach Supabase.
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError('Please enter your name.');
+      return;
+    }
+    if (mode !== 'forgot') {
+      if (!password) {
+        setError('Please enter your password.');
+        return;
+      }
+      if (password.length < 6) {
+        setError('Password must be at least 6 characters.');
+        return;
+      }
+    }
     if (mode === 'signup' && password !== confirmPassword) {
       setError('Passwords don’t match.');
       return;
     }
 
     setSubmitting(true);
-    const email = nameToEmail(name);
+    const email = nameToEmail(trimmedName);
 
     if (mode === 'forgot') {
       try {
         const res = await supabase.functions.invoke('request-password-reset', {
-          body: { display_name: name.trim() },
+          body: { display_name: trimmedName },
         });
-        if (res.error) {
+        // Never surface raw backend errors — always map to friendly copy.
+        if (res.error || res.data?.error) {
           setError('Could not submit request. Please try again later.');
-        } else if (res.data?.error) {
-          setError(res.data.error);
         } else {
           setSuccess('Reset request sent. An admin will get to it soon.');
           setName('');
@@ -135,7 +151,7 @@ const Auth = () => {
     }
 
     if (mode === 'signup') {
-      const { error } = await signUp(email, password, name.trim());
+      const { error } = await signUp(email, password, trimmedName);
       if (error) setError(friendlyAuthError(error.message, mode));
     } else {
       const { error } = await signIn(email, password);
@@ -163,7 +179,7 @@ const Auth = () => {
           <p className={`mt-1 text-center text-sm font-body ${authHelper}`}>{heading.helper}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="auth-name" className={`mb-1 block text-sm font-medium font-body ${authHelper}`}>
               Name
@@ -186,7 +202,7 @@ const Auth = () => {
               <label htmlFor="auth-password" className={`mb-1 block text-sm font-medium font-body ${authHelper}`}>
                 Password
               </label>
-              <div className="relative">
+              <div className="flex items-stretch gap-2">
                 <input
                   id="auth-password"
                   name="password"
@@ -194,7 +210,7 @@ const Auth = () => {
                   autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="cozy-input w-full min-h-11 pr-11"
+                  className="cozy-input flex-1 min-h-11"
                   placeholder="••••••••"
                   required
                   minLength={6}
@@ -204,7 +220,7 @@ const Auth = () => {
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                   aria-pressed={showPassword}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-9 w-9 items-center justify-center rounded-lg text-[hsl(25_20%_32%)] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-card text-[hsl(25_20%_32%)] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                 </button>
