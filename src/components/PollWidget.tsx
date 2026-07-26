@@ -212,7 +212,7 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
                 const optVotes = pollVotes.filter(v => v.option_index === idx).length;
                 const pct = totalVoters > 0 ? Math.round((optVotes / totalVoters) * 100) : 0;
                 const isSelected = myVotes.some(v => v.option_index === idx);
-                const isSaving = saving.has(`${poll.id}:${idx}`);
+                const isSaving = saving.has(poll.id);
 
                 return (
                   <button
