@@ -364,7 +364,7 @@ const CurrentBookWidget = () => {
                 step={1}
                 value={[myPage]}
                 onValueChange={(val) => setMyPage(val[0])}
-                onValueCommit={() => updateProgress()}
+                onValueCommit={(val) => updateProgress(val[0])}
                 aria-label="Your current page"
                 className="flex-1"
               />
@@ -375,8 +375,9 @@ const CurrentBookWidget = () => {
                     const val = Math.max(0, Math.min(totalPages, parseInt(pageInput) || 0));
                     setMyPage(val);
                     setEditingPage(false);
-                    // Auto-save typed value on submit so users never lose their edit.
-                    setTimeout(() => updateProgress(), 0);
+                    // Save the freshly-computed value directly so a stale
+                    // myPage closure never overwrites the user's edit.
+                    updateProgress(val);
                   }}
                   className="min-w-[60px]"
                 >
@@ -391,7 +392,7 @@ const CurrentBookWidget = () => {
                       const val = Math.max(0, Math.min(totalPages, parseInt(pageInput) || 0));
                       setMyPage(val);
                       setEditingPage(false);
-                      setTimeout(() => updateProgress(), 0);
+                      updateProgress(val);
                     }}
                     aria-label="Type a page number"
                     className="w-[78px] rounded-lg border-2 border-terracotta bg-background px-2 py-1 text-center text-sm font-semibold text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40"
