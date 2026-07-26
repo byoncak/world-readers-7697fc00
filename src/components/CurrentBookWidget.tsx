@@ -132,6 +132,8 @@ const CurrentBookWidget = () => {
       .select('user_id, current_page, last_updated')
       .eq('book_id', bookId);
 
+    if (gen !== genRef.current) return;
+
     if (data && data.length > 0) {
       const userIds = data.map((p: any) => p.user_id);
 
@@ -148,8 +150,8 @@ const CurrentBookWidget = () => {
           .eq('equipped', true),
       ]);
 
-      // Warm the equipped-cosmetics cache so each <StyledName> render
-      // doesn't fire its own query for these users.
+      if (gen !== genRef.current) return;
+
       prefetchEquippedCosmetics(userIds, (inventory as any[]) ?? []);
 
       const progressBarMap = new Map<string, string>();
@@ -170,8 +172,6 @@ const CurrentBookWidget = () => {
 
       setProgress(merged);
       const mine = merged.find((p: any) => p.user_id === user?.id);
-      // If the current user has no progress row for this book, reset local
-      // page to 0 so a previous club's page never leaks into the new one.
       setMyPage(mine ? mine.current_page : 0);
     } else {
       setProgress([]);
