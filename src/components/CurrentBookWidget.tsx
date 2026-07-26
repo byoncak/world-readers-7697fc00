@@ -109,7 +109,7 @@ const CurrentBookWidget = () => {
       .limit(1);
 
     // Drop stale results — a newer club switch has invalidated this fetch.
-    if (gen !== genRef.current) return;
+    if (isStaleGen(gen, genRef.current)) return;
 
     if (error) {
       setBookError(true);
@@ -133,7 +133,7 @@ const CurrentBookWidget = () => {
       .select('user_id, current_page, last_updated')
       .eq('book_id', bookId);
 
-    if (gen !== genRef.current) return;
+    if (isStaleGen(gen, genRef.current)) return;
 
     if (data && data.length > 0) {
       const userIds = data.map((p: any) => p.user_id);
@@ -151,7 +151,7 @@ const CurrentBookWidget = () => {
           .eq('equipped', true),
       ]);
 
-      if (gen !== genRef.current) return;
+      if (isStaleGen(gen, genRef.current)) return;
 
       prefetchEquippedCosmetics(userIds, (inventory as any[]) ?? []);
 
@@ -192,7 +192,7 @@ const CurrentBookWidget = () => {
       .eq('book_id', bookId)
       .gte('created_at', todayStart);
 
-    if (gen !== genRef.current) return;
+    if (isStaleGen(gen, genRef.current)) return;
 
     if (data) {
       const filtered = data.filter((c: any) => {
@@ -207,7 +207,7 @@ const CurrentBookWidget = () => {
   const updateProgress = async (intendedPage: number) => {
     if (!book || !user || !clubId) return;
     const total = book.total_pages || 1;
-    const newPage = Math.max(0, Math.min(total, Math.round(intendedPage)));
+    const newPage = clampPage(intendedPage, total);
 
     // Track the latest intended page so a stale onBlur that duplicates the
     // same value becomes a no-op after onSubmit already committed.
@@ -241,7 +241,7 @@ const CurrentBookWidget = () => {
     // Drop the response if the user switched clubs while the write was
     // in flight — the mutation is committed server-side but our local
     // state now belongs to a different club.
-    if (capturedGen !== genRef.current) return;
+    if (isStaleGen(capturedGen, genRef.current)) return;
 
     if (error) {
       toast.error("Couldn't save your progress. Please try again.");
@@ -423,7 +423,7 @@ const CurrentBookWidget = () => {
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
-                    const val = Math.max(0, Math.min(totalPages, parseInt(pageInput) || 0));
+                    const val = clampPage(parseInt(pageInput) || 0, totalPages);
                     // Lock the commit so the input's paired onBlur, which
                     // fires right after Enter, cannot double-submit.
                     commitLockRef.current = true;
@@ -445,7 +445,7 @@ const CurrentBookWidget = () => {
                     onChange={(e) => setPageInput(e.target.value)}
                     onBlur={() => {
                       if (commitLockRef.current) return;
-                      const val = Math.max(0, Math.min(totalPages, parseInt(pageInput) || 0));
+                      const val = clampPage(parseInt(pageInput) || 0, totalPages);
                       setMyPage(val);
                       setEditingPage(false);
                       updateProgress(val);
