@@ -48,19 +48,37 @@ const CurrentBookWidget = () => {
   const myBarRef = useRef<HTMLDivElement>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const celebrateTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  // Monotonic generation counter — bumped when the active club changes so
+  // in-flight fetches and mutation completions cannot overwrite the new
+  // club's local state after they resolve late.
+  const genRef = useRef(0);
+  // Suppress a paired onBlur when the form's onSubmit already committed.
+  const commitLockRef = useRef(false);
+  // Prevent overlapping progress mutations (slider + typed input).
+  const savingRef = useRef(false);
+  // Last intended page the user asked us to save; kept so a failed save can
+  // be retried without losing the typed/slid value.
+  const pendingPageRef = useRef<number | null>(null);
 
   // Cheer state
   const [cheeredToday, setCheeredToday] = useState<Set<string>>(new Set());
   const [cheerTarget, setCheerTarget] = useState<{ userId: string; name: string } | null>(null);
 
   useEffect(() => {
+    // Bump the generation on every club change so stale in-flight results
+    // can be dropped by comparing against genRef.current at resolve time.
+    genRef.current += 1;
     if (!clubId) return;
     setBook(null);
     setProgress([]);
     // Reset the local page to 0 immediately when club context changes so
     // progress from a previously-viewed club never leaks into the new one.
     setMyPage(0);
-    fetchCurrentBook();
+    setUpdating(false);
+    setJustSaved(false);
+    savingRef.current = false;
+    pendingPageRef.current = null;
+    fetchCurrentBook(genRef.current);
 
     // Best-effort local reset for self-cheer testing across page navigation
     const resetAt = Number(localStorage.getItem('selfCheerResetAt') || '0');
