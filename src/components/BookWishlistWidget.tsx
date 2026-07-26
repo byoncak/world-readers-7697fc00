@@ -439,11 +439,29 @@ const BookWishlistWidget = () => {
           </div>
         </div>
 
+      ) : loading ? (
+        <p role="status" aria-live="polite" className="py-4 text-center text-sm text-muted-foreground font-body">
+          Loading suggestions…
+        </p>
+      ) : loadError ? (
+        <div role="alert" className="py-4 text-center text-sm text-destructive font-body">
+          {loadError}
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={() => fetchSuggestions()}
+              className="min-h-11 px-3 rounded-lg border border-border bg-card text-sm hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
       ) : !showForm ? (
         <p className="py-4 text-center text-sm text-muted-foreground font-body">
           No suggestions yet. Add your favorite! 📚
         </p>
       ) : null}
+
 
       <ConfirmDialog
         open={!!pendingDelete}
