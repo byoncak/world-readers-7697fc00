@@ -53,12 +53,37 @@ const BookWishlistWidget = () => {
     ? suggestions.some(s => s.user_id === user?.id && (s as any).book_id === currentBookId)
     : suggestions.some(s => s.user_id === user?.id);
 
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   useEffect(() => {
     setSuggestions([]);
     setCurrentBookId(null);
+    setLoadError(null);
     if (!clubId) return;
-    fetchCurrentBook();
-    fetchSuggestions();
+    // Sequence: resolve the current book first so we can scope suggestions
+    // to the active cycle. Historical rounds (older book_id) never appear.
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      const { data: current, error: bookErr } = await supabase
+        .from('books')
+        .select('id')
+        .eq('status', 'current')
+        .eq('club_id', clubId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (bookErr) {
+        setLoadError('Could not load suggestions.');
+        setLoading(false);
+        return;
+      }
+      const bookId = current?.id || null;
+      setCurrentBookId(bookId);
+      await fetchSuggestions(bookId);
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, [clubId]);
 
   useEffect(() => {
@@ -83,25 +108,21 @@ const BookWishlistWidget = () => {
     return () => { clearTimeout(t); ctrl.abort(); };
   }, [bookQuery]);
 
-  const fetchCurrentBook = async () => {
+  const fetchSuggestions = async (bookId: string | null = currentBookId) => {
     if (!clubId) return;
-    const { data } = await supabase
-      .from('books')
-      .select('id')
-      .eq('status', 'current')
-      .eq('club_id', clubId)
-      .maybeSingle();
-    setCurrentBookId(data?.id || null);
-  };
-
-  const fetchSuggestions = async () => {
-    if (!clubId) return;
-    const { data: votes } = await supabase
+    let query = supabase
       .from('book_votes')
       .select('*, profiles(display_name)')
       .eq('club_id', clubId)
       .order('created_at', { ascending: false });
-
+    // Only show suggestions from the current cycle when there is one.
+    if (bookId) query = query.eq('book_id', bookId);
+    const { data: votes, error } = await query;
+    if (error) {
+      setLoadError('Could not load suggestions.');
+      return;
+    }
+    setLoadError(null);
     if (!votes) return;
 
     const suggestionIds = votes.map((v: any) => v.id);
@@ -118,6 +139,7 @@ const BookWishlistWidget = () => {
     enriched.sort((a: any, b: any) => b.vote_count - a.vote_count);
     setSuggestions(enriched);
   };
+
 
   const addSuggestion = async (e: React.FormEvent) => {
     e.preventDefault();
