@@ -255,6 +255,17 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   activeConvoRef.current = activeConvo;
   const clubIdRef = useRef(clubId);
   clubIdRef.current = clubId;
+  // Monotonic generation for the current club. Any async op captures the
+  // generation at start and drops its result when the club changes mid-flight.
+  const clubGenRef = useRef(0);
+  useEffect(() => {
+    clubGenRef.current += 1;
+    // Reset per-club caches so stale members/convos don't leak across clubs.
+    setAllMembers([]);
+    setConversations([]);
+    setMessages([]);
+    setActiveConvo(null);
+  }, [clubId]);
 
   useEffect(() => {
     if (!user || !clubId) return;
