@@ -807,13 +807,13 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
                     className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-accent"
                   >
                     <Link
-                      to={`/member/${m.user_id}`}
+                      to={clubPath(`/member/${m.user_id}`)}
                       onClick={(e) => {
                         e.preventDefault();
                         const params = new URLSearchParams(searchParams);
                         params.delete('dialog');
                         setSearchParams(params, { replace: true });
-                        navigate(`/member/${m.user_id}`);
+                        navigate(clubPath(`/member/${m.user_id}`));
                       }}
                       className="flex flex-1 min-w-0 items-center gap-3"
                     >
