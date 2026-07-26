@@ -2,21 +2,37 @@ import { useEffect, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-const SEEN_DISCUSS_KEY = 'lounge:lastSeen:discuss';
-const SEEN_POLLS_KEY = 'lounge:lastSeen:polls';
+const EPOCH = '1970-01-01T00:00:00Z';
+
+const discussKey = (clubId: string | null | undefined) =>
+  `lounge:lastSeen:discuss:${clubId ?? 'none'}`;
+const pollsKey = (clubId: string | null | undefined) =>
+  `lounge:lastSeen:polls:${clubId ?? 'none'}`;
 
 const readSeen = (k: string) => {
   try {
-    return localStorage.getItem(k) ?? '1970-01-01T00:00:00Z';
+    return localStorage.getItem(k) ?? EPOCH;
   } catch {
-    return '1970-01-01T00:00:00Z';
+    return EPOCH;
   }
 };
 
-async function fetchLatest() {
+async function fetchLatest(clubId: string) {
   const [d, p] = await Promise.all([
-    supabase.from('discussions').select('created_at').order('created_at', { ascending: false }).limit(1).maybeSingle(),
-    supabase.from('polls').select('created_at').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    supabase
+      .from('discussions')
+      .select('created_at')
+      .eq('club_id', clubId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('polls')
+      .select('created_at')
+      .eq('club_id', clubId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
   return {
     latestDiscuss: (d.data as any)?.created_at ?? null,
@@ -24,22 +40,30 @@ async function fetchLatest() {
   };
 }
 
-export function useLoungeUnread() {
+export function useLoungeUnread(clubId: string | null | undefined) {
   const { data } = useQuery({
-    queryKey: ['lounge-latest'],
-    queryFn: fetchLatest,
+    queryKey: ['lounge-latest', clubId],
+    queryFn: () => fetchLatest(clubId as string),
+    enabled: !!clubId,
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
   });
 
-  const [seenDiscuss, setSeenDiscuss] = useState(() => readSeen(SEEN_DISCUSS_KEY));
-  const [seenPolls, setSeenPolls] = useState(() => readSeen(SEEN_POLLS_KEY));
+  const [seenDiscuss, setSeenDiscuss] = useState(() => readSeen(discussKey(clubId)));
+  const [seenPolls, setSeenPolls] = useState(() => readSeen(pollsKey(clubId)));
+
+  // Re-read seen keys whenever the active club changes, so switching clubs
+  // never lights another club's badge from the previous club's timestamps.
+  useEffect(() => {
+    setSeenDiscuss(readSeen(discussKey(clubId)));
+    setSeenPolls(readSeen(pollsKey(clubId)));
+  }, [clubId]);
 
   // Cross-tab + same-tab sync
   useEffect(() => {
     const onChange = () => {
-      setSeenDiscuss(readSeen(SEEN_DISCUSS_KEY));
-      setSeenPolls(readSeen(SEEN_POLLS_KEY));
+      setSeenDiscuss(readSeen(discussKey(clubId)));
+      setSeenPolls(readSeen(pollsKey(clubId)));
     };
     window.addEventListener('storage', onChange);
     window.addEventListener('lounge-seen-changed', onChange);
@@ -47,10 +71,10 @@ export function useLoungeUnread() {
       window.removeEventListener('storage', onChange);
       window.removeEventListener('lounge-seen-changed', onChange);
     };
-  }, []);
+  }, [clubId]);
 
-  const hasDiscuss = !!data?.latestDiscuss && data.latestDiscuss > seenDiscuss;
-  const hasPolls = !!data?.latestPoll && data.latestPoll > seenPolls;
+  const hasDiscuss = !!clubId && !!data?.latestDiscuss && data.latestDiscuss > seenDiscuss;
+  const hasPolls = !!clubId && !!data?.latestPoll && data.latestPoll > seenPolls;
 
   return {
     hasDiscuss,
@@ -59,9 +83,10 @@ export function useLoungeUnread() {
   };
 }
 
-export function markLoungeTabSeen(tab: 'discuss' | 'polls') {
+export function markLoungeTabSeen(tab: 'discuss' | 'polls', clubId: string | null | undefined) {
+  if (!clubId) return;
   try {
-    const key = tab === 'discuss' ? SEEN_DISCUSS_KEY : SEEN_POLLS_KEY;
+    const key = tab === 'discuss' ? discussKey(clubId) : pollsKey(clubId);
     localStorage.setItem(key, new Date().toISOString());
     window.dispatchEvent(new Event('lounge-seen-changed'));
   } catch {
