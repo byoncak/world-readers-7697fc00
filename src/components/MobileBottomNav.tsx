@@ -51,34 +51,37 @@ const MobileBottomNav = () => {
   };
 
   return (
-    <nav ref={navRef} className="safe-bottom fixed bottom-0 left-0 right-0 z-50 min-h-[var(--mobile-nav-height)] border-t border-border bg-card/95 backdrop-blur-md sm:hidden">
+    <nav
+      ref={navRef}
+      aria-label="Primary"
+      className="safe-bottom fixed bottom-0 left-0 right-0 z-50 min-h-[var(--mobile-nav-height)] border-t border-border bg-card/95 backdrop-blur-md sm:hidden"
+    >
       <div className="flex items-center justify-around py-2">
         {navItems.map((item) => {
           const { to, key, icon: Icon, label } = item;
           const active = isActive(item);
-          const home = key === 'home';
           return (
             <Link
               key={key}
               to={to}
               onClick={() => scrollHomeToTop(key)}
-              className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 min-h-[44px] py-1.5 text-[10px] font-medium transition-colors active:scale-[0.96] ${
-                active ? 'text-primary' : home ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+              aria-current={active ? 'page' : undefined}
+              className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 min-h-[44px] py-1.5 text-[11px] font-medium transition-colors active:scale-[0.96] ${
+                active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {home ? (
-                <span className={`flex h-10 w-14 items-center justify-center rounded-[6px] border bg-card shadow-[0_4px_20px_-4px_hsl(var(--warm-brown)/0.1)] ${active ? 'border-primary/60' : 'border-muted-foreground/25'}`}>
-                  <Icon className="h-7 w-7" />
-                </span>
-              ) : (
-                <span className="relative">
-                  <Icon className="h-5 w-5" />
-                  {key === 'lounge' && loungeHasUnread && !active && (
-                    <span aria-label="New activity in Lounge" className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-destructive ring-2 ring-card" />
-                  )}
-                </span>
-              )}
-              <span className={home && !active ? 'font-semibold' : ''}>{label}</span>
+              {/* Active-state indicator (shape, not color alone) */}
+              <span
+                aria-hidden="true"
+                className={`absolute top-0 h-1 w-6 rounded-full transition-opacity duration-200 ${active ? 'bg-primary opacity-100' : 'opacity-0'}`}
+              />
+              <span className="relative">
+                <Icon className="h-5 w-5" aria-hidden="true" />
+                {key === 'lounge' && loungeHasUnread && !active && (
+                  <span aria-label="New activity in Lounge" className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-destructive ring-2 ring-card" />
+                )}
+              </span>
+              <span>{label}</span>
             </Link>
           );
         })}

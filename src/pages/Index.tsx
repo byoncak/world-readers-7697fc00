@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { StickyNote, Apple, Send } from 'lucide-react';
+import { Apple, Send } from 'lucide-react';
 import CurrentBookWidget from '@/components/CurrentBookWidget';
 import NextMeetupWidget from '@/components/NextMeetupWidget';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,14 +26,7 @@ const buildShortcuts = (clubPath: (p?: string) => string) => [
     borderClass: 'border-[hsl(var(--sage)/0.5)]',
   },
   {
-    to: clubPath('/journal?tab=notes'),
-    icon: StickyNote,
-    label: 'Notes',
-    colorClass: 'bg-[hsl(var(--peach))] text-[hsl(var(--terracotta))] hover:shadow-[0_8px_24px_-4px_hsl(var(--peach)/0.5)]',
-    borderClass: 'border-[hsl(var(--peach)/0.5)]',
-  },
-  {
-    to: clubPath('/lounge?tab=messages'),
+    to: clubPath('/inbox'),
     icon: Send,
     label: 'Messages',
     colorClass: 'bg-[hsl(var(--cream))] text-[hsl(var(--warm-brown))] hover:shadow-[0_8px_24px_-4px_hsl(var(--soft-gold)/0.4)]',
@@ -43,17 +36,21 @@ const buildShortcuts = (clubPath: (p?: string) => string) => [
 
 const Index = () => {
   const { user } = useAuth();
-  const { clubPath } = useClub();
+  const { clubId, clubPath } = useClub();
   const shortcutItems = buildShortcuts(clubPath);
   const [showLivePoll, setShowLivePoll] = useState(false);
 
   useEffect(() => {
+    // Poll indicator must be strictly scoped to the current club — otherwise
+    // Home lights up for a poll in a sibling club the user also belongs to.
+    setShowLivePoll(false);
     const checkLivePoll = async () => {
-      if (!user) return;
+      if (!user || !clubId) return;
       const { data: pollData } = await supabase
         .from('polls')
         .select('id')
-        .eq('active', true);
+        .eq('active', true)
+        .eq('club_id', clubId);
       if (!pollData || pollData.length === 0) {
         setShowLivePoll(false);
         return;
@@ -68,36 +65,44 @@ const Index = () => {
       setShowLivePoll(!hasVotedAll);
     };
     checkLivePoll();
-  }, [user]);
+  }, [user, clubId]);
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 pb-20 sm:pb-6 space-y-12 animate-page-in">
       {/* Hero: current book + your progress */}
       <CurrentBookWidget />
 
-      <nav aria-label="Journal shortcuts" className="flex items-center justify-around px-2">
+      <nav aria-label="Quick shortcuts" className="flex items-start justify-center gap-8 px-2">
         {shortcutItems.map(({ to, icon: Icon, label, colorClass, borderClass }) => (
           <Link
             key={to}
             to={to}
             aria-label={label}
-            title={label}
-            className={`group flex h-14 w-14 flex-col items-center justify-center rounded-2xl border ${borderClass} ${colorClass} shadow-[0_4px_16px_-4px_hsl(var(--warm-brown)/0.12)] transition-all duration-300 hover:-translate-y-1 hover:scale-105`}
+            className="group flex flex-col items-center gap-1.5"
           >
-            <Icon className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+            <span
+              className={`flex h-14 w-14 items-center justify-center rounded-2xl border ${borderClass} ${colorClass} shadow-[0_4px_16px_-4px_hsl(var(--warm-brown)/0.12)] transition-all duration-300 group-hover:-translate-y-1 group-hover:scale-105`}
+            >
+              <Icon className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" aria-hidden="true" />
+            </span>
+            <span className="text-xs font-body font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+              {label}
+            </span>
           </Link>
         ))}
         {showLivePoll && (
           <Link
             to={clubPath('/activity?poll=open')}
-            aria-label="Live poll"
-            title="Live poll"
-            className="group flex h-14 w-14 flex-col items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/10 text-red-600 shadow-[0_4px_16px_-4px_hsl(var(--warm-brown)/0.12)] transition-all duration-300 hover:-translate-y-1 hover:scale-105 hover:bg-red-500/20"
+            aria-label="Live poll — open to vote"
+            className="group flex flex-col items-center gap-1.5"
           >
-            <span className="relative flex h-3 w-3">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/10 text-red-600 shadow-[0_4px_16px_-4px_hsl(var(--warm-brown)/0.12)] transition-all duration-300 group-hover:-translate-y-1 group-hover:scale-105 group-hover:bg-red-500/20">
+              <span className="relative flex h-3 w-3" aria-hidden="true">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+              </span>
             </span>
+            <span className="text-xs font-body font-medium text-red-600">Live poll</span>
           </Link>
         )}
       </nav>

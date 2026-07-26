@@ -52,10 +52,13 @@ const AppHeader = () => {
             </div>
           ) : (
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity outline-none">
-              <img src={wormIcon} alt="Worm" className="h-6 w-6 shrink-0" />
+            <DropdownMenuTrigger
+              aria-label={`Switch club (current: ${title})`}
+              className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
+            >
+              <img src={wormIcon} alt="" className="h-6 w-6 shrink-0" />
               <h1 className="font-display text-lg sm:text-2xl font-bold text-foreground truncate">{title}</h1>
-              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-64">
               <DropdownMenuLabel>Switch club</DropdownMenuLabel>
@@ -66,17 +69,17 @@ const AppHeader = () => {
                 <DropdownMenuItem key={m.club_id} asChild>
                   <Link to={`/c/${m.club_id}`} className="flex items-center justify-between w-full">
                     <span className="truncate">{m.club.name}</span>
-                    {m.club_id === clubId && <span className="text-xs text-primary ml-2">●</span>}
+                    {m.club_id === clubId && <span className="text-xs text-primary ml-2" aria-label="current">●</span>}
                   </Link>
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link to="/clubs" className="flex items-center gap-2"><Home className="h-4 w-4" /> All clubs</Link>
+                <Link to="/clubs" className="flex items-center gap-2"><Home className="h-4 w-4" aria-hidden="true" /> All clubs</Link>
               </DropdownMenuItem>
               {isClubAdmin && clubId && (
                 <DropdownMenuItem asChild>
-                  <Link to={`/c/${clubId}/manage`} className="flex items-center gap-2"><Settings className="h-4 w-4" /> Manage this club</Link>
+                  <Link to={`/c/${clubId}/manage`} className="flex items-center gap-2"><Settings className="h-4 w-4" aria-hidden="true" /> Manage this club</Link>
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -87,11 +90,11 @@ const AppHeader = () => {
             {clubId && (
               <>
                 <Link to={clubPath('/lounge')} className="hidden sm:flex cozy-btn-ghost items-center gap-1.5 px-5 text-sm">
-                  <MessagesSquare className="h-4 w-4" />
+                  <MessagesSquare className="h-4 w-4" aria-hidden="true" />
                   <span>Lounge</span>
                 </Link>
                 <Link to={clubPath('/inbox')} className="hidden sm:flex cozy-btn-ghost items-center gap-1.5 px-5 text-sm">
-                  <Mail className="h-4 w-4" />
+                  <Mail className="h-4 w-4" aria-hidden="true" />
                   <span>Inbox</span>
                 </Link>
               </>
@@ -99,11 +102,15 @@ const AppHeader = () => {
             <NotificationBell />
             {canOpenAdmin && clubId && (
               <Link to={clubPath('/admin')} className="cozy-btn-ghost flex items-center gap-1 sm:gap-1.5 px-2 sm:px-5 text-sm">
-                <Shield className="h-4 w-4" />
+                <Shield className="h-4 w-4" aria-hidden="true" />
                 <span className="hidden sm:inline">Admin</span>
               </Link>
             )}
-            <Link to={clubId ? clubPath(`/member/${user?.id}`) : '/clubs'} title="View profile" className="transition-all hover:shadow-md rounded-full">
+            <Link
+              to={clubId ? clubPath(`/member/${user?.id}`) : '/clubs'}
+              aria-label="View your profile"
+              className="transition-all hover:shadow-md rounded-full focus-visible:ring-2 focus-visible:ring-ring"
+            >
               <UserAvatar
                 userId={user?.id || ''}
                 avatarUrl={profile?.avatar_url ?? null}
