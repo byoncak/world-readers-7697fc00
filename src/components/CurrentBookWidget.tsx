@@ -206,9 +206,21 @@ const CurrentBookWidget = () => {
   const updateProgress = async (intendedPage: number) => {
     if (!book || !user || !clubId) return;
     const total = book.total_pages || 1;
-    const prevPage = progress.find((p) => p.user_id === user.id)?.current_page ?? 0;
-    // Clamp the intended page to [0, total] so we never push over-max writes.
     const newPage = Math.max(0, Math.min(total, Math.round(intendedPage)));
+
+    // Track the latest intended page so a stale onBlur that duplicates the
+    // same value becomes a no-op after onSubmit already committed.
+    pendingPageRef.current = newPage;
+
+    const prevPage = progress.find((p) => p.user_id === user.id)?.current_page ?? 0;
+    if (newPage === prevPage) return;
+
+    // Reject overlapping mutations — the slider fires many rapid values and
+    // the input's onBlur can race with onSubmit. The last request wins by
+    // re-checking pendingPageRef when the in-flight one resolves.
+    if (savingRef.current) return;
+    savingRef.current = true;
+    const capturedGen = genRef.current;
     const pagesGained = newPage - prevPage;
     const nowComplete = prevPage < total && newPage >= total;
 
@@ -222,13 +234,27 @@ const CurrentBookWidget = () => {
         current_page: newPage,
         last_updated: new Date().toISOString(),
       }, { onConflict: 'user_id,book_id' });
+    savingRef.current = false;
     setUpdating(false);
 
+    // Drop the response if the user switched clubs while the write was
+    // in flight — the mutation is committed server-side but our local
+    // state now belongs to a different club.
+    if (capturedGen !== genRef.current) return;
+
     if (error) {
-      // Keep the user's typed/slid page visible so they can retry.
       toast.error("Couldn't save your progress. Please try again.");
       return;
     }
+
+    // If more edits queued up while we were saving, chase the latest value.
+    const queued = pendingPageRef.current;
+    if (queued !== null && queued !== newPage) {
+      pendingPageRef.current = null;
+      void updateProgress(queued);
+      return;
+    }
+    pendingPageRef.current = null;
 
     // Best-effort: use the current user's known display name so their own
     // row never renders as "Reader" while we wait for the next fetch.
@@ -295,8 +321,8 @@ const CurrentBookWidget = () => {
           <p className="text-sm text-muted-foreground font-body">Couldn't load the current book.</p>
           <button
             type="button"
-            onClick={fetchCurrentBook}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-card px-3 py-1.5 text-xs font-semibold text-foreground border border-border/60 shadow-sm hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => fetchCurrentBook()}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-card px-4 py-2 text-xs font-semibold text-foreground border border-border/60 shadow-sm hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Try again
           </button>
