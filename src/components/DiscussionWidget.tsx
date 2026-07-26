@@ -99,7 +99,7 @@ const ChatBubble = memo(({ d, isOwn, userId, onReply, onDelete, parentSnippet, p
           {!replyToAuthor && (
             <StyledName userId={d.user_id} name={name} className="text-[11px] font-bold" showBadge />
           )}
-          <span className="text-[10px] text-muted-foreground/50" title={format(new Date(d.created_at), 'PPP p')}>
+          <span className="text-[11px] text-muted-foreground" title={format(new Date(d.created_at), 'PPP p')}>
             {formatDistanceToNow(new Date(d.created_at), { addSuffix: true })}
           </span>
         </div>

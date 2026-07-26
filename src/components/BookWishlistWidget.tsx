@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useClub } from '@/contexts/ClubContext';
 import { useRole } from '@/hooks/useRole';
-import { BookHeart, Heart, Plus, MessageCircle, Send, X } from 'lucide-react';
+import { BookHeart, ThumbsUp, Plus, MessageCircle, Send, X, Info } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import ConfirmDialog from './ConfirmDialog';
 import StyledName from './StyledName';
@@ -212,14 +212,20 @@ const BookWishlistWidget = () => {
           <BookHeart className="h-4 w-4 text-terracotta" />
           <h2 className="font-display text-lg font-semibold text-foreground">Book Suggestions</h2>
         </div>
-        {!userAlreadySuggested && (
+        {!userAlreadySuggested ? (
           <button
             onClick={() => setShowForm(f => !f)}
-            className="h-8 w-8 flex items-center justify-center rounded-full bg-terracotta text-white shadow-md hover:bg-terracotta/90 transition-all"
-            title="Suggest a book"
+            aria-label="Suggest a book"
+            aria-expanded={showForm}
+            className="h-8 w-8 flex items-center justify-center rounded-full bg-terracotta text-white shadow-md hover:bg-terracotta/90 transition-all focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <Plus className={`h-4 w-4 transition-transform duration-200 ${showForm ? 'rotate-45' : ''}`} />
+            <Plus className={`h-4 w-4 transition-transform duration-200 ${showForm ? 'rotate-45' : ''}`} aria-hidden="true" />
           </button>
+        ) : (
+          <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-body">
+            <Info className="h-3 w-3" aria-hidden="true" />
+            One suggestion per cycle
+          </span>
         )}
       </div>
 
@@ -294,14 +300,17 @@ const BookWishlistWidget = () => {
               <div className="group relative flex items-start gap-3 py-3 transition-colors hover:bg-cream/30 rounded-md px-1">
                 <button
                   onClick={() => toggleVote(s.id, s.user_voted)}
-                  className="flex flex-col items-center gap-0.5 pt-0.5"
+                  aria-label={s.user_voted ? `Remove vote (${s.vote_count})` : `Vote (${s.vote_count})`}
+                  aria-pressed={s.user_voted}
+                  className="flex flex-col items-center gap-0.5 pt-0.5 focus-visible:ring-2 focus-visible:ring-ring rounded"
                 >
-                  <Heart
+                  <ThumbsUp
                     className={`h-4 w-4 transition-all duration-200 ${
                       s.user_voted
                         ? 'fill-terracotta text-terracotta scale-110'
                         : 'text-muted-foreground hover:text-terracotta'
                     }`}
+                    aria-hidden="true"
                   />
                   <span className="text-[11px] font-semibold text-muted-foreground tabular-nums">
                     {s.vote_count}
@@ -312,7 +321,7 @@ const BookWishlistWidget = () => {
                   <p className="mt-0.5 text-xs text-muted-foreground font-body truncate">
                     {s.suggestion_author}
                   </p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground/70 font-body truncate">
+                  <p className="mt-0.5 text-[11px] text-muted-foreground font-body truncate">
                     <StyledName userId={s.user_id} name={(s.profiles as any)?.display_name || 'Reader'} />
                     {' · '}
                     {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}

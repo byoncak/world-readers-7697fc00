@@ -67,7 +67,7 @@ const Auth = () => {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background cozy-bg-pattern">
-        <div className="loader"></div>
+        <div className="book"><div/><div/><div/><div/><div/></div>
       </div>
     );
   }

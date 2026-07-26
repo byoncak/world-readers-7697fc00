@@ -1,239 +1,96 @@
 
-# World Readers — Admin, Moderator, Owner & Testing Audit
+# World Readers — UX & Accessibility Audit
 
-Read-only audit. No code, RLS, or data changes proposed in this pass — only findings and a plan you approve before we build.
+Read-only pass across `src/pages/*`, `src/components/*`, `src/hooks/*`. Findings cite specific files. No code changed.
 
----
+## Journey-by-journey findings
 
-## 1. Inventory of privileged surfaces
+### 1. Sign in / sign up / recovery — `src/pages/Auth.tsx`, `src/hooks/useAuth.tsx`
+- Login uses a synthetic `name → name.replace(/\s+/g,'.')@bookclub.local` email. Trivial typos ("brett" vs "Brett S") silently create/hit different accounts. No hint of the normalization; error is only "Invalid name or password".
+- Password rule is `minLength={6}` and nothing else. No confirm-password on sign-up, no show/hide toggle, no strength meter.
+- Sign-up errors surface `error.message` raw (technical wording); sign-in errors are always the same string even for network failures.
+- Recovery is admin-mediated (`request-password-reset` edge function). This is fine but the copy ("An admin will reset your password soon") gives no ETA, no cancel path, and no way to change your mind after submit.
+- Loading uses `<div className="loader"/>` — a class not used elsewhere; the rest of the app uses the `.book` spinner. Inconsistent brand.
+- Success/error banners rely on color-only differentiation (no leading icon), and mode toggles ("Sign in ↔ Create account ↔ Forgot") aren't announced (no `aria-live` region), so screen-reader users don't hear form context change.
+- No first-run onboarding after sign-up: new users land on `/` → `HomeRedirect` with no club, no prompt to set display name/avatar or discover clubs.
 
-### 1a. Global (app-wide) role signals
-| Signal | Where defined | Who it trusts |
-|---|---|---|
-| `user_roles` table + `app_role` enum (`admin` / `moderator` / `member`) | DB | Server-side |
-| `public.has_role(uid, role)` | DB, SECURITY DEFINER | Server-side |
-| `public.is_privileged(uid)` — admin OR moderator | DB, SECURITY DEFINER | Server-side |
-| `useRole()` hook | `src/hooks/useRole.tsx` | Client — reads `user_roles`, then **elevates any club owner/admin to global `isAdmin`/`isPrivileged`** |
-| `SUPER_USER_ID` hard-coded UUID | `src/lib/superUser.ts` | Client only — gates Developer Tools card |
-| `useRoleOverride` "View As" | `src/hooks/useRoleOverride.tsx` + `ViewAsHud` | Client only — cosmetic, but changes what UI is rendered |
+### 2. Header & navigation — `src/components/AppHeader.tsx`, `src/components/MobileBottomNav.tsx`, `src/App.tsx`
+- Header title dropdown trigger has no `aria-label`; worm icon uses `alt="Worm"` (should be `alt=""` — decorative next to the title text).
+- Mobile bottom nav is 4 items (Home, Activity, Journal, Lounge). Shop, Inbox, and Notes are only reachable through Home shortcuts or the Lounge sub-tab — Shop in particular is a first-class currency loop yet buried.
+- Bottom-nav active state is color-only (`text-primary`) with no shape/underline; labels are `text-[10px]` — below comfortable minimum.
+- The Home tile has an oversized custom "chip" (`h-10 w-14`, `h-7 w-7` icon) that visually competes with the header — it reads as a badge rather than a nav item.
+- Header on mobile stacks Points, NotificationBell, Admin, and Avatar; on very long club names the title truncates hard against the chevron with no room to breathe.
 
-### 1b. Club-scoped roles
-- `club_members.role` enum (`owner`, `admin`, `member`, …) via `has_club_role` / `is_club_admin` / `is_club_member` (SECURITY DEFINER).
-- Used by `ClubContext`, `ClubGate`, `ClubManage`, `Admin` page group visibility.
+### 3. Dashboard hierarchy — `src/pages/Index.tsx`
+- The three round shortcuts (Shop / Notes / Messages) are icon-only with `title` (invisible on touch) and different destinations mixed together: top-level `/shop`, a sub-tab `/journal?tab=notes`, and a sub-tab of a *different* section `/lounge?tab=messages`. **Notes duplicates the Journal bottom-nav tab and Messages duplicates both `/inbox` and the Lounge Messages tab** — three routes to one feature.
+- `showLivePoll` query fetches `polls` where `active=true` **with no `club_id` filter** — a cross-club leak that pings the Home indicator for polls belonging to other clubs.
+- Loading fallback uses `<div className="book">` while other widgets use `LoadingBlock`, `Sparkles + text`, or nothing — no consistent skeleton language.
 
-### 1c. Admin UI surfaces (routes/pages)
-- `/c/:clubId/admin` → `src/pages/Admin.tsx` — gated by `isPrivileged` (global OR club-elevated).
-- `/c/:clubId/manage` → `src/pages/ClubManage.tsx` — club owner/admin controls.
-- Admin section components under `src/components/admin/`:
-  - `AdminAnnouncementSection`, `AdminPollManager`, `AdminMembersRoles`, `RolePermissionsCard`, `AdminPointsManager`, `AdminInventoryManager`, `AdminShopEditor`, `AdminDataStation`, `AdminTestingTools`.
-- Admin-adjacent widgets: `BookManagerWidget`, `MeetingPollToggleWidget`, `PasswordResetRequests`.
+### 4. Current book & reading progress — `src/components/CurrentBookWidget.tsx`
+- The progress control is a **triple**: slider, editable numeric pill, and Save button. Dragging the slider does not save; you must remember to press Save. On 320–375px this row overflows visually or wraps awkwardly.
+- Meeting date only renders inside the hero when it is 0–5 days out, so most of the time the *hero* silently omits the date and the answer moves to `NextMeetupWidget` below — surprising.
+- Member progress rows use `w-24 truncate` on names + `text-xs` `text-muted-foreground` → most display names ellipsize even at desktop widths, harming social readability.
+- Fallback `'Reader'` still appears briefly when profiles haven't hydrated for members.
+- PDF affordance is a `px-2.5 py-1` badge overlaid on the cover — small tap target and easy to miss.
 
-### 1d. Privileged RPCs / edge functions
-| Surface | Auth model |
-|---|---|
-| `admin_grant_shop_item` / `admin_relock_shop_item` (RPC) | `is_privileged(auth.uid())` |
-| `purchase_shop_item` | Caller = self, or `is_privileged` for others |
-| `user_inventory_guard_update` trigger | Blocks non-privileged edits to ownership fields |
-| `delete-member` (edge fn) | `is_privileged` |
-| `admin-clear-notifications` (edge fn) | **`has_role('admin')` only** |
-| `admin-reset-password` (edge fn) | `is_privileged` |
-| `admin-reset-daily-reward` (edge fn) | **`has_role('admin')` only** |
-| `request-password-reset` (edge fn) | Public (creates row for admin to service) |
-| `send-push-notification` (edge fn) | Needs review — not opened in this pass |
+### 5. Proposing / voting on books — `src/components/BookWishlistWidget.tsx`
+- Vocabulary drift: the UI says "Wishlist", the table is `book_votes`, the row copy says "suggestions", and "vote" is expressed with a `Heart` icon — the same icon used elsewhere for "cheer on".
+- Adding a book, up-voting, and threaded commenting are all crammed into one card, so the primary action ("What should we read next?") isn't obviously call-to-action.
+- Google Books autocomplete list isn't a proper combobox (no `role="combobox"` / `aria-activedescendant`), so keyboard users can't arrow through results.
+- One-suggestion-per-cycle rule is enforced client-side (`userAlreadySuggested`) — the button silently disappears with no explanation of *why*.
 
-### 1e. Client-side testing flags (localStorage — no server enforcement)
-- `selfCheerEnabled` + `selfCheerResetAt` — bypasses cheer target rules in UI only.
-- `freeShopMode` — makes shop items free & re-lockable **in the UI**; server `purchase_shop_item` still enforces price/ownership, so this only appears free if the code short-circuits. `useShopData.ts` reads `freeFlag` — needs confirmation whether it hides paywall client-side.
-- `forceSpoilerHide` — UI-only spoiler test.
-- All three are toggled inside `AdminTestingTools` (currently visible to `SUPER_USER_ID` only).
+### 6. Discussions & replies — `src/components/DiscussionWidget.tsx`, `src/pages/Community.tsx`
+- Timestamp uses `text-[10px] text-muted-foreground/50` on cream — WCAG contrast fail.
+- Replies flatten via `flattenReplies` into a single visual stream with only a "replied to X" line — deep threads lose hierarchy.
+- Community tabs (Discuss / Messages) and Journal tabs (Quotes / Ratings / Notes) are hand-rolled `<button>` rows without `role="tablist"` / `role="tab"` / arrow-key navigation.
 
-### 1f. Maintenance / construction mode
-- `app_settings.maintenance_mode` row, mutated via `AdminTestingTools` (super-user gated in UI) but the write path is a raw `upsert` from the client. Bypass is per-session client state.
+### 7. Messages / Inbox — `src/components/inbox/InboxView.tsx`, `src/pages/Inbox.tsx`, Community "Messages" tab
+- **Three entry points to the same DM feature**: `/c/:id/inbox`, `/c/:id/lounge?tab=messages` (embedded), and the Home "Messages" shortcut (which points to the Lounge sub-tab, not the standalone Inbox). Behavior is subtly different (embedded vs full-page). This is the largest consolidation opportunity in the app.
 
----
+### 8. Meetings — `NextMeetupWidget.tsx` + `MeetingRsvpHud.tsx` + `MeetingRsvpWidget.tsx`
+- Meeting date can appear in up to four places on one screen: CurrentBook badge, NextMeetup card, RSVP HUD, and RSVP widget. Users see the same date/time repeated with slightly different framing.
 
-## 2. Security findings (ranked)
+### 9. Loading / error / empty consistency
+- `StateBlock.tsx` (LoadingBlock/ErrorBlock/EmptyBlock) already exists but only ~half of widgets use it. CurrentBook, BookWishlist, Discussion, Inbox all roll their own.
 
-### Critical
-1. **`useRole` silently promotes every club owner/admin to global `isAdmin` / `isPrivileged`.**
-   - `src/hooks/useRole.tsx` returns `isAdmin: effectiveRole === 'admin' || clubElevatesToAdmin`.
-   - Consequence: any club owner sees & can invoke every "admin-only" UI action app-wide, including `AdminMembersRoles` (which writes to `user_roles`), `AdminPointsManager`, `AdminShopEditor`, `AdminDataStation`, `AdminInventoryManager`, and the `delete-member` / `admin-reset-password` edge functions (which trust `is_privileged` server-side, which is true for any moderator globally — but the client elevation lets a plain club owner *reach* those buttons even without a global role).
-   - This is the single largest blast-radius bug in the app.
+### 10. Contrast, targets, focus
+- Repeated `text-muted-foreground/50–/70` + `text-[10px|11px]` on cream backgrounds; likely below AA. Places: DiscussionWidget bubble metadata, Index shortcut labels (none visible), CurrentBookWidget "by author" line, ChatBubble usernames.
+- Icon-only Home shortcuts, PDF badge on cover, and Home bottom-nav "chip" have no visible text — rely on aria-label.
+- Custom tab strips lack keyboard tablist semantics.
+- Avatar link in header has only `title="View profile"` — no `aria-label`.
 
-2. **`user_roles` mutations happen straight from the browser** (`AdminMembersRoles.setMemberRole` / `removeRole` are direct `supabase.from('user_roles').insert/update/delete`). Whether this succeeds depends entirely on `user_roles` RLS. Combined with finding #1, a club owner who is *not* a global admin could still open this UI; if RLS lets `is_privileged` write to `user_roles`, they can grant themselves global admin.
-   - Need to verify `user_roles` RLS explicitly, and add "only true global admins can write, and the last super_user cannot be demoted" server-side.
+## Prioritized improvement set (UI/UX only, cozy identity preserved)
 
-3. **No `user_roles` rows exist today.** So every "admin-only" gate that relies on `has_role('admin')` currently denies *everyone*, while every gate that relies on `is_privileged` OR the client-side club-elevation lets *many* people through. This inconsistency is why some admin edge functions may look broken while others appear wide open.
+### P0 — correctness & safety
+1. **Scope the Home live-poll indicator to the current club** — add `.eq('club_id', clubId)` to `polls` and `poll_votes` queries in `src/pages/Index.tsx`.
+2. **Fix Auth loader** to use the shared `.book` spinner (or `LoadingBlock`) for brand consistency.
+3. **Header/worm alt fix**: `alt=""` on the decorative worm, real `aria-label` on the club-switcher trigger and avatar link.
 
-### High
-4. **Client-only super-user gate.** `SUPER_USER_ID` in `src/lib/superUser.ts` is enforced only in the React tree. There is no matching DB/RPC check, so Developer Tools actions (maintenance toggle, daily-reward reset, clear notifications) rely on whatever server rule the underlying call uses, not on super-user identity.
-5. **`app_settings` maintenance write is a client upsert.** Anyone RLS lets write to `app_settings` can flip maintenance mode. Needs a policy that restricts writes to a single super_user.
-6. **`localStorage` feature flags with production side-effects.** `freeShopMode` / `selfCheerEnabled` / `forceSpoilerHide` are trivially settable by any user in devtools. If any of them alter what is sent to the DB (e.g., `useShopData` skipping the price check path), that's a real privilege bug, not a "testing" toggle.
-7. **Mixed authorization vocabulary.** Edge functions inconsistently use `has_role('admin')` vs `is_privileged`. There is no single source of truth for "admin".
-8. **`View As` HUD** changes what admin UI renders; a viewer switched to "member" still has server privileges. It's a demo tool, not a safety boundary — must be labeled and never used as a substitute for real permission checks.
+### P1 — consolidate redundancy
+4. **Unify DM surface**: pick one canonical route (recommend `/c/:id/inbox`), remove the Lounge "Messages" tab OR remove the standalone Inbox page, and repoint the Home "Messages" shortcut to the survivor. `src/pages/Community.tsx`, `src/pages/Inbox.tsx`, `src/pages/Index.tsx`, `src/components/AppHeader.tsx`.
+5. **Rework Home shortcuts row**: drop the Notes shortcut (duplicates Journal bottom-nav) and replace with **Shop** as a labeled tile (icon + visible "Shop" text), since Shop is otherwise buried. Keep the shortcuts row to 2 labeled tiles + the live-poll pill.
+6. **Reading progress control**: slider + numeric editor + Save is one control too many. Options: (a) slider auto-saves on `onValueCommit` with a "Saved ✓" toast, keep the numeric pill as a tap-to-type shortcut, drop the standalone Save button; or (b) hide the slider and keep the numeric editor + Save. Pick (a) for cozy immediacy.
+7. **De-duplicate the meeting date**: keep the CurrentBook hero *always* showing meeting date (drop the 0–5 day gate), and make NextMeetup a lightweight countdown/calendar aside instead of a second full card.
 
-### Medium
-9. `AdminMembersRoles` can delete any member other than the current user via `delete-member`; there is no protection against deleting the last remaining admin/super_user.
-10. `admin-clear-notifications` deletes every notification row globally — irreversible, single-click behind an `AlertDialog` only.
-11. `admin-reset-password` accepts any `new_password` from the client with no strength / rate-limit checks; combined with finding #1, any club owner elevated to `is_privileged` could reset any user's password.
-12. No audit trail for privileged actions (role changes, points grants, inventory grants, password resets, notification wipes, maintenance flips).
-13. Admin surfaces are individually rendered but "Members & Roles" already ships its *own* collapsible inside `AdminMembersRoles`, so the outer `CollapsibleSection` in `Admin.tsx` produces a **double-nested collapse** on mobile.
+### P2 — hierarchy & clarity
+8. **Rename "Wishlist" surface to "Next book" (proposal + vote)** in copy; replace `Heart` vote icon with a distinct icon (e.g. `ThumbsUp` or `Bookmark`) to disambiguate from Cheers; add an inline hint when the "Suggest" button is hidden ("You already suggested this cycle").
+9. **Bottom nav polish**: add a subtle active-state dot/underline instead of color-only, bump labels to `text-[11px]`, and reduce the Home "chip" back to icon parity with siblings.
+10. **Widget state consistency**: route CurrentBook / BookWishlist / Discussion / Inbox loading & error paths through `StateBlock` (LoadingBlock / ErrorBlock / EmptyBlock).
 
-### Low
-14. Testing Tools card mixes real destructive admin actions (reset daily reward, clear all notifications, password reset queue) with cosmetic client-only toggles — dangerous mental model.
-15. `Admin` page chip-nav uses `<a href="#…">` which jumps but doesn't focus the section for screen readers.
-16. Touch targets on role pill buttons in `AdminMembersRoles` are ~28 px — below the 44 px iOS guideline.
-17. `RolePermissionsCard` is display-only; users may assume it edits permissions.
+### P3 — accessibility polish
+11. **Contrast pass**: raise timestamp/metadata text from `/50 /60 /70` opacities to solid `text-muted-foreground` and from `text-[10px]/[11px]` to `text-xs`. Files: DiscussionWidget ChatBubble, CurrentBookWidget author line, Index shortcuts, MobileBottomNav labels.
+12. **Tablist semantics**: wrap Community and Journal tab strips in `role="tablist"` with `role="tab"`, `aria-selected`, and Left/Right arrow navigation (extract a small `<Tabs>` primitive or use shadcn's).
+13. **Book autocomplete combobox**: apply `role="combobox"`, `aria-expanded`, `aria-controls`, and `aria-activedescendant` on the search input in BookWishlistWidget.
+14. **Auth ergonomics**: add password show/hide toggle, confirm-password on sign-up, an inline hint under Name explaining that names are unique per club, and pipe sign-in failures through a friendlier error mapper. Add an `aria-live="polite"` region for mode/success/error announcements.
+15. **First-run onboarding**: after sign-up with no club membership, land on `/clubs` with a 1-screen prompt: "Set your display name + avatar → discover or create a club."
 
----
-
-## 3. Proposed role model
-
-Introduce a fourth global role plus keep club-scoped roles distinct.
-
-**Global (`public.app_role` enum)**
-- `super_user` — exactly one row, ever. All Developer Tools, maintenance toggle, role management, destructive resets.
-- `admin` — trusted operators (optional; may stay empty for now).
-- `moderator` — soft-mod (optional).
-- `member` — implicit (no row).
-
-**Club-scoped (`club_members.role`, unchanged)**
-- `owner`, `admin`, `moderator`, `member` — power **inside their own club only**. Must never grant global privilege.
-
-**Rules**
-- Remove the "club owner ⇒ global isAdmin" elevation from `useRole`. Club-scoped power stays scoped.
-- Server-side: add `public.is_super_user(uid)` (SECURITY DEFINER, checks `user_roles.role = 'super_user'`), and use it as the sole gate for: `user_roles` writes, `app_settings` writes, `admin-clear-notifications`, `admin-reset-daily-reward`, Developer Tools RPCs.
-- `is_privileged` narrows to "global admin OR super_user" (drop moderator from destructive paths; keep it for content moderation only).
-- Constraint / trigger: block delete/demote of the last `super_user` row.
-
----
-
-## 4. Canonical identity migration (decision required)
-
-Two candidates in `auth.users`: `brett@bookclub.local` and `byoncak@gmail.com`.
-
-**Recommendation: `byoncak@gmail.com`** — real email, recoverable, matches the Lovable owner. `brett@bookclub.local` is an internal reset-flow alias tied to display-name login.
-
-Two safe paths — pick one before we build:
-
-**Option A — Promote `byoncak@gmail.com`** *(recommended)*
-- Migration: `INSERT INTO user_roles (user_id, role) VALUES (<byoncak uid>, 'super_user')`.
-- Update `SUPER_USER_ID` constant to that UUID.
-- Leave `brett@bookclub.local` as a normal member (or delete after confirming no owned data references).
-
-**Option B — Consolidate onto `brett@bookclub.local`**
-- Keep current UUID (already `SUPER_USER_ID`).
-- Add `super_user` role for that UUID.
-- Long term this is worse: internal `@bookclub.local` addresses don't receive real email, break OAuth, and can't recover access.
-
-We will not assign the role until you confirm A or B.
-
----
-
-## 5. Redesigned admin UX (mobile-first)
-
-Keep the existing collapsible-sections skeleton in `Admin.tsx`, but tighten:
-
-### Navigation
-- Replace horizontal chip nav with a **sticky segmented control** with 3 groups: **Club**, **Community**, **System**. Sections filter by group.
-  - Club: Reading · Meetings & polls · Members (club) · Club invites.
-  - Community: Announcements · Points · Inventory · Shop catalog.
-  - System (super_user only): Global roles · Data station · Maintenance · Developer tools.
-- Section anchors use programmatic focus (`ref.focus()` + smooth scroll respecting `prefers-reduced-motion`).
-
-### Section cards
-- Single collapse level everywhere. Remove the `AdminMembersRoles` inner collapse so the outer `CollapsibleSection` is the only one.
-- Every section header shows: icon, title, one-line description, and a right-aligned tag (e.g. "Super user only", "Club owner only") so authority is legible.
-- Touch targets ≥44 px. Role pills become a dropdown on `sm` and below.
-
-### Destructive actions
-- Group every destructive action into a single "Danger zone" strip inside each card with red left border.
-- Standardized `ConfirmDialog` with typed confirmation (`type "DELETE" to confirm`) for: delete member, clear all notifications, reset password, maintenance ON, relock item, remove role.
-- Success toasts show what was affected and offer an Undo where trivially reversible (e.g., "role change reverted").
-
-### Testing tools isolation
-- Move to a separate route `/c/:clubId/admin/dev` **only mounted when `is_super_user`**.
-- Big amber banner: "Developer tools — visible only to the super user. Actions affect real data.".
-- Split the card into two subcards:
-  - **Client-only sandbox toggles** (self-cheer, spoiler force, free-shop UI preview) — clearly labeled as UI-only.
-  - **Real system actions** (reset daily reward, clear notifications, maintenance mode, password reset queue).
-- All localStorage flags: on load, if user is not super_user, wipe the flag and ignore it.
-
-### Members & roles
-- New "Global roles" section (super_user only) — only place `user_roles` is written.
-- Club-scoped member management stays in `ClubManage`, not `Admin`.
-
----
-
-## 6. Safeguards & auditability
-
-- Server: `user_roles` policies rewritten to allow SELECT for authenticated, INSERT/UPDATE/DELETE only where `is_super_user(auth.uid())`; trigger prevents removing the last `super_user`.
-- Server: `app_settings` writes require `is_super_user`.
-- Edge functions all switched to `is_super_user` (destructive) or `is_privileged` (content moderation) — no more mixed vocab.
-- Password reset: require min length + server-side rate limit per admin.
-- New `admin_audit_log` table (append-only, super_user-read) recording actor, action, target, timestamp for every privileged mutation.
-- `View As` HUD relabeled "Preview UI as" and disabled outside dev tools route.
-
----
-
-## 7. Files & migrations likely to change
-
-**Migrations (single migration, super_user + audit + policy tightening):**
-- Extend `app_role` enum with `super_user`.
-- New `is_super_user(uid)` SECURITY DEFINER function.
-- Rewrite RLS on `user_roles`, `app_settings`, `shop_items`, `user_inventory` where `is_privileged` currently allows too much.
-- Trigger `prevent_super_user_lockout` on `user_roles`.
-- New `admin_audit_log` table + GRANTs + RLS.
-- (Role assignment for byoncak/brett is a separate one-line insert, run only after your confirmation.)
-
-**Client:**
-- `src/hooks/useRole.tsx` — drop club-elevation to global.
-- `src/lib/superUser.ts` — replace hard-coded UUID with a `useIsSuperUser()` hook that queries `user_roles`.
-- `src/pages/Admin.tsx` — segmented nav, grouping, single-collapse enforcement.
-- `src/components/admin/AdminTestingTools.tsx` — split into `DevSandboxCard` and `SystemActionsCard`, gated on super_user.
-- `src/components/admin/AdminMembersRoles.tsx` — remove inner collapse; move global role writes to a new `GlobalRolesCard`; rely on server-side super_user gate.
-- `src/components/ViewAsHud.tsx` — relabel, gate on super_user, remove from production nav.
-- `src/contexts/MaintenanceContext.tsx` — write path becomes an RPC gated by `is_super_user`.
-- `src/hooks/useShopData.ts` — verify `freeFlag` only affects presentation, never DB writes.
-- Edge functions `admin-clear-notifications`, `admin-reset-daily-reward`, `admin-reset-password`, `delete-member` — unified `is_super_user` / `is_privileged` gate + audit-log inserts.
-
----
-
-## 8. Test matrix & rollout
-
-**Test matrix**
-| Actor | Global roles UI | Points/Inventory/Shop | Delete member | Clear notifications | Maintenance toggle | Dev tools route | Club admin panel |
-|---|---|---|---|---|---|---|---|
-| Anonymous | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Member | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Club owner (no global role) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ own club only |
-| Global moderator | ❌ | Read + soft mod | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Global admin | ❌ (view only) | ✅ | ✅ (except super_user) | ❌ | ❌ | ❌ | ❌ |
-| Super_user | ✅ | ✅ | ✅ (except self / last super_user) | ✅ | ✅ | ✅ | ✅ |
-
-Automated:
-- Extend `src/test/rls-club-isolation.test.ts` with `user_roles` write-denial cases per actor.
-- Add Playwright smoke: sign in as club owner → assert `/admin` System group + Dev Tools are hidden and RPCs return 403.
-- Assert `/clubs` and every existing route still renders (no regression from removing club-elevation).
-
-Manual:
-- Verify last-super_user protection by attempting to demote yourself.
-- Verify audit-log rows for each privileged action.
-- Mobile pass at 320/375/390/430 widths on `/admin`.
-
-**Rollout**
-1. Merge migration (adds `super_user`, `is_super_user`, tightened policies, audit log). No role assigned yet.
-2. Merge client changes — with no `super_user` row, System group is empty; admins keep their existing power via `admin` role.
-3. Only after confirmation of Option A/B, run the one-line insert to grant `super_user`.
-4. Publish.
-
-**Rollback**
-- Client: revert commit.
-- DB: keep new enum value (safe); revert policies to prior definitions via a follow-up migration if needed. Audit log stays.
-
----
-
-## Decision needed before build
-
-- **Confirm Option A (`byoncak@gmail.com`) or Option B (`brett@bookclub.local`)** as the sole super_user identity.
-- Confirm you want `is_privileged` narrowed (drop moderator from destructive paths) or kept as-is.
+## Verification checklist (post-implementation)
+- 320 / 375 / 390 / 430 / desktop: no horizontal overflow on Home, CurrentBook row, Community/Journal tabs, Inbox message row.
+- Keyboard: Tab reaches every actionable control in Auth, Home shortcuts, Header dropdown, Community/Journal tabs, DM composer, book autocomplete; arrow keys traverse tablists and combobox options; visible focus ring on all.
+- Screen reader: header trigger, avatar link, worm icon, Home shortcut tiles, live-poll pill, and reading-progress Save state read as intended; Auth mode changes announce.
+- Contrast: run automated (axe/pa11y) on Home, Community/Discuss, Journal, Inbox, CurrentBook; every text ≥ AA (4.5:1) on cream and dark themes.
+- Cross-club isolation: switch clubs; confirm Home poll indicator, CurrentBook, NextMeetup, BookWishlist, DM inbox all refetch and never show a foreign club's data.
+- Redundancy removed: exactly one DM route, exactly one Journal→Notes entry, exactly one meeting-date "source of truth" in the hero.
+- Full test suite green; add tests for club-scoped poll indicator, unified DM route redirect, auto-save reading progress semantics, and tablist keyboard navigation.
+- Manual: reading-progress auto-save fires on release only (not on every drag tick), Saved ✓ badge appears, undo path (drag back) still saves.
+- Not published.
