@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type ActivityKind =
   | 'completion'
-  | 'personal_completion'
   | 'quote'
   | 'rating'
   | 'join'
@@ -30,67 +29,60 @@ export interface ActivityItem {
 const LIMIT_PER_SOURCE = 30;
 const FEED_LIMIT = 50;
 
-async function fetchFeed(): Promise<ActivityItem[]> {
+async function fetchFeed(clubId: string): Promise<ActivityItem[]> {
   const [
-    completionsRes,
-    personalFinishesRes,
     progressRes,
     quotesRes,
     ratingsRes,
-    profilesRes,
+    membersRes,
     votesRes,
     pollsRes,
     announcementsRes,
   ] = await Promise.all([
     supabase
-      .from('personal_book_completions')
-      .select('id,user_id,book_id,completed_at')
-      .order('completed_at', { ascending: false })
-      .limit(LIMIT_PER_SOURCE),
-    supabase
-      .from('personal_books')
-      .select('id,user_id,title,author,finished_at')
-      .not('finished_at', 'is', null)
-      .order('finished_at', { ascending: false })
-      .limit(LIMIT_PER_SOURCE),
-    supabase
       .from('reading_progress')
       .select('id,user_id,book_id,current_page,last_updated')
+      .eq('club_id', clubId)
       .order('last_updated', { ascending: false })
       .limit(200),
     supabase
       .from('book_quotes')
       .select('id,user_id,book_id,quote_text,is_spoiler,created_at')
+      .eq('club_id', clubId)
       .order('created_at', { ascending: false })
       .limit(LIMIT_PER_SOURCE),
     supabase
       .from('book_ratings')
       .select('id,user_id,book_id,rating,review,created_at')
+      .eq('club_id', clubId)
       .order('created_at', { ascending: false })
       .limit(LIMIT_PER_SOURCE),
     supabase
-      .from('profiles')
-      .select('user_id,display_name,avatar_url,created_at')
-      .order('created_at', { ascending: false })
+      .from('club_members')
+      .select('user_id,joined_at')
+      .eq('club_id', clubId)
+      .order('joined_at', { ascending: false })
       .limit(LIMIT_PER_SOURCE),
     supabase
       .from('book_votes')
       .select('id,user_id,suggestion_title,suggestion_author,created_at')
+      .eq('club_id', clubId)
       .order('created_at', { ascending: false })
       .limit(LIMIT_PER_SOURCE),
     supabase
       .from('polls')
       .select('id,question,created_at')
+      .eq('club_id', clubId)
       .order('created_at', { ascending: false })
       .limit(LIMIT_PER_SOURCE),
     supabase
       .from('announcements')
       .select('id,title,message,created_at')
+      .eq('club_id', clubId)
       .order('created_at', { ascending: false })
       .limit(LIMIT_PER_SOURCE),
   ]);
 
-  // Collect user + book ids we still need.
   const userIds = new Set<string>();
   const bookIds = new Set<string>();
   const add = (rows: any[] | null, uKey?: string, bKey?: string) => {
@@ -99,23 +91,18 @@ async function fetchFeed(): Promise<ActivityItem[]> {
       if (bKey && r[bKey]) bookIds.add(r[bKey]);
     });
   };
-  add(completionsRes.data, 'user_id', 'book_id');
-  add(personalFinishesRes.data, 'user_id');
   add(progressRes.data, 'user_id', 'book_id');
   add(quotesRes.data, 'user_id', 'book_id');
   add(ratingsRes.data, 'user_id', 'book_id');
   add(votesRes.data, 'user_id');
+  add(membersRes.data, 'user_id');
 
   const profileMap = new Map<string, { display_name: string | null; avatar_url: string | null }>();
-  (profilesRes.data ?? []).forEach((p: any) =>
-    profileMap.set(p.user_id, { display_name: p.display_name, avatar_url: p.avatar_url })
-  );
-  const missingUsers = [...userIds].filter((id) => !profileMap.has(id));
-  if (missingUsers.length) {
+  if (userIds.size) {
     const { data } = await supabase
       .from('profiles')
       .select('user_id,display_name,avatar_url')
-      .in('user_id', missingUsers);
+      .in('user_id', [...userIds]);
     (data ?? []).forEach((p: any) =>
       profileMap.set(p.user_id, { display_name: p.display_name, avatar_url: p.avatar_url })
     );
@@ -144,21 +131,8 @@ async function fetchFeed(): Promise<ActivityItem[]> {
     return b ? { bookTitle: b.title, bookAuthor: b.author } : {};
   };
 
-  (completionsRes.data ?? []).forEach((r: any) =>
-    items.push({
-      id: `c-${r.id}`,
-      kind: 'completion',
-      createdAt: r.completed_at,
-      userId: r.user_id,
-      bookId: r.book_id,
-      ...profileFor(r.user_id),
-      ...bookFor(r.book_id),
-    })
-  );
-  // Dedup: skip progress-based completion if we already have one in personal_book_completions
-  const completionKeys = new Set(
-    (completionsRes.data ?? []).map((r: any) => `${r.user_id}|${r.book_id}`)
-  );
+  // Completions from reading_progress (club-scoped by construction)
+  const completionKeys = new Set<string>();
   (progressRes.data ?? []).forEach((r: any) => {
     const b = bookMap.get(r.book_id);
     if (!b) return;
@@ -177,17 +151,6 @@ async function fetchFeed(): Promise<ActivityItem[]> {
       ...bookFor(r.book_id),
     });
   });
-  (personalFinishesRes.data ?? []).forEach((r: any) =>
-    items.push({
-      id: `pc-${r.id}`,
-      kind: 'personal_completion',
-      createdAt: r.finished_at,
-      userId: r.user_id,
-      bookTitle: r.title,
-      bookAuthor: r.author,
-      ...profileFor(r.user_id),
-    })
-  );
   (quotesRes.data ?? []).forEach((r: any) =>
     items.push({
       id: `q-${r.id}`,
@@ -214,14 +177,13 @@ async function fetchFeed(): Promise<ActivityItem[]> {
       ...bookFor(r.book_id),
     })
   );
-  (profilesRes.data ?? []).forEach((r: any) =>
+  (membersRes.data ?? []).forEach((r: any) =>
     items.push({
-      id: `j-${r.user_id}`,
+      id: `j-${clubId}-${r.user_id}`,
       kind: 'join',
-      createdAt: r.created_at,
+      createdAt: r.joined_at,
       userId: r.user_id,
-      displayName: r.display_name ?? 'A new reader',
-      avatarUrl: r.avatar_url,
+      ...profileFor(r.user_id),
     })
   );
   (votesRes.data ?? []).forEach((r: any) =>
@@ -256,10 +218,11 @@ async function fetchFeed(): Promise<ActivityItem[]> {
   return items.slice(0, FEED_LIMIT);
 }
 
-export function useActivityFeed() {
+export function useActivityFeed(clubId: string | null | undefined) {
   return useQuery({
-    queryKey: ['activity-feed'],
-    queryFn: fetchFeed,
+    queryKey: ['activity-feed', clubId],
+    queryFn: () => fetchFeed(clubId as string),
+    enabled: !!clubId,
     staleTime: 1000 * 60,
   });
 }
