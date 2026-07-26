@@ -268,41 +268,50 @@ const BookWishlistWidget = () => {
               </div>
             )}
           </div>
+          <label htmlFor="wl-title" className="sr-only">Book title</label>
           <input
+            id="wl-title"
+            name="wl-title"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Book title"
-            className="cozy-input w-full"
+            aria-label="Book title"
+            className="cozy-input w-full min-h-11"
             maxLength={200}
             required
           />
+          <label htmlFor="wl-author" className="sr-only">Author</label>
           <input
+            id="wl-author"
+            name="wl-author"
             type="text"
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
             placeholder="Author"
-            className="cozy-input w-full"
+            aria-label="Author"
+            className="cozy-input w-full min-h-11"
             maxLength={200}
             required
           />
-          <button type="submit" disabled={submitting} className="cozy-btn-primary w-full text-sm disabled:opacity-50">
+          <button type="submit" disabled={submitting} className="cozy-btn-primary w-full text-sm min-h-11 disabled:opacity-50">
             {submitting ? 'Adding…' : '🌟 Add Suggestion'}
           </button>
         </form>
       )}
 
       {suggestions.length > 0 ? (
-        <ScrollArea className="h-72 -mx-1 [mask-image:linear-gradient(to_bottom,black_calc(100%-24px),transparent)]">
+        <div className="-mx-1 sm:h-72 sm:overflow-y-auto">
           <div className="divide-y divide-border/40 px-1">
           {suggestions.map((s) => (
             <div key={s.id}>
               <div className="group relative flex items-start gap-3 py-3 transition-colors hover:bg-cream/30 rounded-md px-1">
                 <button
+                  type="button"
                   onClick={() => toggleVote(s.id, s.user_voted)}
                   aria-label={s.user_voted ? `Remove vote (${s.vote_count})` : `Vote (${s.vote_count})`}
                   aria-pressed={s.user_voted}
-                  className="flex flex-col items-center gap-0.5 pt-0.5 focus-visible:ring-2 focus-visible:ring-ring rounded"
+                  className="flex flex-col items-center justify-center gap-0.5 min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-ring rounded"
                 >
                   <ThumbsUp
                     className={`h-4 w-4 transition-all duration-200 ${
@@ -327,21 +336,24 @@ const BookWishlistWidget = () => {
                     {formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}
                   </p>
                 </div>
-                <div className="flex items-center gap-0.5 pt-0.5">
+                <div className="flex items-center gap-0.5">
                   <button
+                    type="button"
                     onClick={() => toggleComments(s.id)}
-                    className={`flex items-center gap-1 px-1.5 py-1 rounded-md transition-colors ${expandedId === s.id ? 'text-terracotta bg-terracotta/10' : 'text-muted-foreground/60 hover:text-terracotta'}`}
-                    title="Comments"
+                    aria-label={expandedId === s.id ? 'Hide comments' : 'Show comments'}
+                    aria-expanded={expandedId === s.id}
+                    className={`inline-flex items-center justify-center min-h-11 min-w-11 rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-ring ${expandedId === s.id ? 'text-terracotta bg-terracotta/10' : 'text-muted-foreground/70 hover:text-terracotta'}`}
                   >
-                    <MessageCircle className="h-3.5 w-3.5" />
+                    <MessageCircle className="h-4 w-4" aria-hidden="true" />
                   </button>
                   {(user?.id === s.user_id || isPrivileged) && (
                     <button
+                      type="button"
                       onClick={() => setPendingDelete({ type: 'suggestion', id: s.id })}
-                      className="p-1 rounded-md text-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-all"
-                      title={isPrivileged && user?.id !== s.user_id ? 'Remove (admin)' : 'Delete'}
+                      aria-label={isPrivileged && user?.id !== s.user_id ? 'Remove suggestion (admin)' : 'Delete suggestion'}
+                      className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-md text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-ring transition-all"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <X className="h-4 w-4" aria-hidden="true" />
                     </button>
                   )}
                 </div>
@@ -356,28 +368,41 @@ const BookWishlistWidget = () => {
                       <div key={c.id} className="flex items-start gap-2 text-xs font-body">
                         <div className="flex-1">
                           <StyledName userId={c.user_id} name={(c.profiles as any)?.display_name || 'Reader'} className="font-semibold text-[11px]" />
-                          <span className="text-[10px] text-muted-foreground/60"> · {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}</span>
+                          <span className="text-[11px] text-muted-foreground"> · {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}</span>
                           <p className="mt-0.5 text-xs">{c.message}</p>
                         </div>
                         {(user?.id === c.user_id || isPrivileged) && (
-                          <button onClick={() => setPendingDelete({ type: 'comment', id: c.id })} className="mt-1 text-muted-foreground/40 hover:text-destructive transition-colors">
-                            <X className="h-3 w-3" />
+                          <button
+                            type="button"
+                            onClick={() => setPendingDelete({ type: 'comment', id: c.id })}
+                            aria-label="Delete comment"
+                            className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-md text-muted-foreground/70 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+                          >
+                            <X className="h-4 w-4" aria-hidden="true" />
                           </button>
                         )}
                       </div>
                     ))
                   )}
                   <form onSubmit={addComment} className="flex gap-1.5 pt-1">
+                    <label htmlFor={`wl-cmt-${s.id}`} className="sr-only">Add a comment</label>
                     <input
+                      id={`wl-cmt-${s.id}`}
+                      name={`wl-cmt-${s.id}`}
                       type="text"
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       placeholder="Add a comment..."
-                      className="cozy-input flex-1 text-xs py-1"
+                      aria-label="Add a comment"
+                      className="cozy-input flex-1 text-xs min-h-11"
                       maxLength={300}
                     />
-                    <button type="submit" className="cozy-btn-primary py-1 px-2">
-                      <Send className="h-3 w-3" />
+                    <button
+                      type="submit"
+                      aria-label="Send comment"
+                      className="cozy-btn-primary inline-flex items-center justify-center min-h-11 min-w-11 px-2"
+                    >
+                      <Send className="h-4 w-4" aria-hidden="true" />
                     </button>
                   </form>
                 </div>
@@ -385,7 +410,8 @@ const BookWishlistWidget = () => {
             </div>
           ))}
           </div>
-        </ScrollArea>
+        </div>
+
       ) : !showForm ? (
         <p className="py-4 text-center text-sm text-muted-foreground font-body">
           No suggestions yet. Add your favorite! 📚
