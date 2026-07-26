@@ -447,10 +447,14 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     setSending(true);
     setNewMessage('');
 
-    const ok = await sendDirectMessage(text);
-    if (!ok) {
+    const result = await sendDirectMessage(text);
+    // Only restore the draft for a genuinely retryable failure. On
+    // 'invalid' (non-member) or 'stale' (club/convo switched mid-send)
+    // we must NOT inject the old draft into the new conversation.
+    // sendDirectMessage already emitted the single friendly toast, so
+    // we do not toast again here.
+    if (result.status === 'retry') {
       setNewMessage(text);
-      toast.error('Failed to send message.');
     }
     setSending(false);
   };
@@ -460,8 +464,8 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     setSending(true);
     setShowGifPicker(false);
 
-    const ok = await sendDirectMessage(url);
-    if (!ok) toast.error('Failed to send GIF.');
+    // sendDirectMessage owns the single failure toast; don't double-toast.
+    await sendDirectMessage(url);
     setSending(false);
   };
 
@@ -479,10 +483,8 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     }
 
     const message = `${kind === 'image' ? IMAGE_PREFIX : VIDEO_PREFIX}${uploadedUrl}`;
-    const ok = await sendDirectMessage(message);
-    if (!ok) {
-      toast.error(`Failed to send ${kind}.`);
-    }
+    // sendDirectMessage owns the single failure toast; don't double-toast.
+    await sendDirectMessage(message);
     setSending(false);
   };
 
