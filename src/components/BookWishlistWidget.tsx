@@ -457,7 +457,9 @@ const BookWishlistWidget = () => {
                       type="button"
                       onClick={() => setPendingDelete({ type: 'suggestion', id: s.id })}
                       aria-label={isPrivileged && user?.id !== s.user_id ? 'Remove suggestion (admin)' : 'Delete suggestion'}
-                      className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-md text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-ring transition-all"
+                      disabled={deletingSuggestion === s.id}
+                      aria-busy={deletingSuggestion === s.id}
+                      className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-md text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-ring transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <X className="h-4 w-4" aria-hidden="true" />
                     </button>
