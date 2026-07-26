@@ -280,6 +280,7 @@ const DiscussionWidget = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
+  const composerFormRef = useRef<HTMLFormElement>(null);
 
   const [loadingDiscussions, setLoadingDiscussions] = useState(true);
   const [discussionsError, setDiscussionsError] = useState(false);
