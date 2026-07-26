@@ -96,7 +96,7 @@ const CurrentBookWidget = () => {
     clearTimeout(celebrateTimerRef.current);
   }, []);
 
-  const fetchCurrentBook = async () => {
+  const fetchCurrentBook = async (gen: number = genRef.current) => {
     if (!clubId) return;
     setBookLoading(true);
     setBookError(false);
@@ -107,6 +107,9 @@ const CurrentBookWidget = () => {
       .eq('club_id', clubId)
       .limit(1);
 
+    // Drop stale results — a newer club switch has invalidated this fetch.
+    if (gen !== genRef.current) return;
+
     if (error) {
       setBookError(true);
       setBookLoading(false);
@@ -115,15 +118,15 @@ const CurrentBookWidget = () => {
 
     if (books && books.length > 0) {
       setBook(books[0]);
-      // Run progress + cheers in parallel
-      const tasks: Promise<unknown>[] = [fetchProgress(books[0].id)];
-      if (user) tasks.push(fetchTodayCheers(books[0].id));
+      // Run progress + cheers in parallel, guarded by the same generation.
+      const tasks: Promise<unknown>[] = [fetchProgress(books[0].id, gen)];
+      if (user) tasks.push(fetchTodayCheers(books[0].id, gen));
       void Promise.all(tasks);
     }
     setBookLoading(false);
   };
 
-  const fetchProgress = async (bookId: string) => {
+  const fetchProgress = async (bookId: string, gen: number = genRef.current) => {
     const { data } = await supabase
       .from('reading_progress')
       .select('user_id, current_page, last_updated')
