@@ -169,7 +169,6 @@ function Row({ item, clubPath }: { item: ActivityItem; clubPath: (p?: string) =>
 const Activity = () => {
   const { clubId, clubPath } = useClub();
   const { data, isLoading, isError, refetch, isFetching } = useActivityFeed(clubId);
-  const { clubId, clubPath } = useClub();
   const [searchParams] = useSearchParams();
   const [pollSheetOpen, setPollSheetOpen] = useState(false);
   const [activePollCount, setActivePollCount] = useState(0);
