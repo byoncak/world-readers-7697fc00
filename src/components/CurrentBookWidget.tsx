@@ -57,6 +57,9 @@ const CurrentBookWidget = () => {
     if (!clubId) return;
     setBook(null);
     setProgress([]);
+    // Reset the local page to 0 immediately when club context changes so
+    // progress from a previously-viewed club never leaks into the new one.
+    setMyPage(0);
     fetchCurrentBook();
 
     // Best-effort local reset for self-cheer testing across page navigation
