@@ -15,6 +15,7 @@ import MobileFab from '@/components/MobileFab';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { isStaleGen } from '@/lib/guards';
 
 interface Conversation {
   otherUserId: string;
@@ -159,13 +160,25 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
 
     // Re-verify current membership right before sending so a club switch
     // (or the receiver leaving mid-conversation) can't leak a message.
-    const { data: membership } = await supabase
+    const { data: membership, error: memErr } = await supabase
       .from('club_members')
       .select('user_id')
       .eq('club_id', capturedClubId)
       .eq('user_id', capturedReceiver)
       .maybeSingle();
-    if (capturedGen !== clubGenRef.current) return false;
+    // After the async boundary, re-confirm we're still in the same club,
+    // targeting the same conversation, before we do anything with the
+    // membership result — a stale response must not send.
+    if (isStaleGen(capturedGen, clubGenRef.current)) return false;
+    if (clubIdRef.current !== capturedClubId) return false;
+    if (activeConvoRef.current?.otherUserId !== capturedReceiver) return false;
+    if (memErr) {
+      // Distinguish a transient membership-query failure from a confirmed
+      // non-member so we don't tell the user their friend "isn't in this
+      // club" when the check itself just failed.
+      toast.error("Couldn't verify membership. Please try again.");
+      return false;
+    }
     if (!membership) {
       toast.error('That reader is no longer in this club.');
       return false;
@@ -182,7 +195,11 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     } as any);
 
     if (error) {
-      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+      // Only roll back the optimistic row if the view still owns it —
+      // a club switch mid-send has already cleared messages.
+      if (!isStaleGen(capturedGen, clubGenRef.current)) {
+        setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+      }
       return false;
     }
 
