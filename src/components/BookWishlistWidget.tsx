@@ -187,7 +187,10 @@ const BookWishlistWidget = () => {
 
 
   const deleteSuggestion = async (id: string) => {
+    if (deletingSuggestion === id) return;
+    setDeletingSuggestion(id);
     const { error } = await supabase.from('book_votes').delete().eq('id', id);
+    setDeletingSuggestion(null);
     if (error) {
       toast.error("Couldn't remove that suggestion. Please try again.");
       return;
@@ -236,32 +239,60 @@ const BookWishlistWidget = () => {
     fetchComments(id);
   };
 
-  const fetchComments = async (suggestionId: string) => {
-    const { data } = await supabase
+  const fetchComments = async (
+    suggestionId: string,
+    gen: number = genRef.current,
+  ) => {
+    setCommentsError(false);
+    const { data, error } = await supabase
       .from('suggestion_comments')
       .select('*, profiles(display_name)')
       .eq('suggestion_id', suggestionId)
       .order('created_at', { ascending: true });
-    if (data) setComments(data as any);
+    // Drop the result if the club changed or the expanded suggestion changed
+    // while we were fetching — otherwise a stale response overwrites the new
+    // expansion's comments.
+    if (gen !== genRef.current) return;
+    if (expandedId !== null && expandedId !== suggestionId) return;
+    if (error) {
+      setCommentsError(true);
+      return;
+    }
+    setComments((data as any) || []);
   };
 
   const addComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !expandedId || !user) return;
+    const trimmed = newComment.trim();
+    if (!trimmed || !expandedId || !user || postingComment) return;
 
-    await supabase.from('suggestion_comments').insert({
+    setPostingComment(true);
+    const { error } = await supabase.from('suggestion_comments').insert({
       suggestion_id: expandedId,
       user_id: user.id,
       club_id: clubId,
-      message: newComment.trim(),
+      message: trimmed,
     } as any);
+    setPostingComment(false);
 
+    if (error) {
+      // Keep the draft intact so the user can retry without retyping.
+      toast.error("Couldn't post that comment. Please try again.");
+      return;
+    }
     setNewComment('');
     fetchComments(expandedId);
   };
 
   const deleteComment = async (id: string) => {
-    await supabase.from('suggestion_comments').delete().eq('id', id);
+    if (deletingComment === id) return;
+    setDeletingComment(id);
+    const { error } = await supabase.from('suggestion_comments').delete().eq('id', id);
+    setDeletingComment(null);
+    if (error) {
+      toast.error("Couldn't remove that comment. Please try again.");
+      return;
+    }
     if (expandedId) fetchComments(expandedId);
   };
 
