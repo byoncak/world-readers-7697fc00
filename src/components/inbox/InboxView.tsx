@@ -152,15 +152,32 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   }, [user]);
 
   const sendDirectMessage = useCallback(async (message: string) => {
-    if (!user || !activeConvo || sending) return false;
+    if (!user || !activeConvo || sending || !clubId) return false;
+    const capturedGen = clubGenRef.current;
+    const capturedClubId = clubId;
+    const capturedReceiver = activeConvo.otherUserId;
 
-    const optimisticMsg = buildOptimisticMessage(message, activeConvo.otherUserId);
+    // Re-verify current membership right before sending so a club switch
+    // (or the receiver leaving mid-conversation) can't leak a message.
+    const { data: membership } = await supabase
+      .from('club_members')
+      .select('user_id')
+      .eq('club_id', capturedClubId)
+      .eq('user_id', capturedReceiver)
+      .maybeSingle();
+    if (capturedGen !== clubGenRef.current) return false;
+    if (!membership) {
+      toast.error('That reader is no longer in this club.');
+      return false;
+    }
+
+    const optimisticMsg = buildOptimisticMessage(message, capturedReceiver);
     pushOptimisticMessage(optimisticMsg);
 
     const { error } = await supabase.from('direct_messages').insert({
       sender_id: user.id,
-      receiver_id: activeConvo.otherUserId,
-      club_id: clubId,
+      receiver_id: capturedReceiver,
+      club_id: capturedClubId,
       message,
     } as any);
 
@@ -177,6 +194,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   const fetchConversations = useCallback(async () => {
     if (!user || !clubId) { setFetching(false); return; }
     setConvError(false);
+    const capturedGen = clubGenRef.current;
 
     const { data: allMessages, error: fetchErr } = await supabase
       .from('direct_messages')
@@ -185,6 +203,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order('created_at', { ascending: false });
 
+    if (capturedGen !== clubGenRef.current) return;
     if (fetchErr) { setConvError(true); setFetching(false); return; }
     if (!allMessages) { setFetching(false); return; }
 
@@ -202,6 +221,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .from('profiles')
       .select('user_id, display_name, avatar_url')
       .in('user_id', otherIds);
+    if (capturedGen !== clubGenRef.current) return;
 
     const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
@@ -228,6 +248,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   const fetchMessages = useCallback(async () => {
     if (!user || !activeConvo || !clubId) return;
     const otherId = activeConvo.otherUserId;
+    const capturedGen = clubGenRef.current;
 
     const { data } = await supabase
       .from('direct_messages')
@@ -236,6 +257,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${user.id})`)
       .order('created_at', { ascending: true });
 
+    if (capturedGen !== clubGenRef.current) return;
     if (data) setMessages(data);
 
     await supabase
@@ -245,6 +267,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .eq('sender_id', otherId)
       .eq('receiver_id', user.id)
       .eq('read', false);
+    if (capturedGen !== clubGenRef.current) return;
 
     setConversations(prev =>
       prev.map(c => c.otherUserId === otherId ? { ...c, unreadCount: 0 } : c)
@@ -255,6 +278,17 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   activeConvoRef.current = activeConvo;
   const clubIdRef = useRef(clubId);
   clubIdRef.current = clubId;
+  // Monotonic generation for the current club. Any async op captures the
+  // generation at start and drops its result when the club changes mid-flight.
+  const clubGenRef = useRef(0);
+  useEffect(() => {
+    clubGenRef.current += 1;
+    // Reset per-club caches so stale members/convos don't leak across clubs.
+    setAllMembers([]);
+    setConversations([]);
+    setMessages([]);
+    setActiveConvo(null);
+  }, [clubId]);
 
   useEffect(() => {
     if (!user || !clubId) return;
@@ -315,23 +349,20 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     }
     if (!clubId) return;
     if (activeConvo?.otherUserId === chatParam) return;
-    const existing = conversations.find(c => c.otherUserId === chatParam);
-    if (existing) {
-      setActiveConvo(existing);
-      return;
-    }
+
     let cancelled = false;
+    const capturedGen = clubGenRef.current;
     (async () => {
-      // Validate the target is actually a member of the active club before
-      // opening a chat — this prevents deep links from surfacing users who
-      // belong to a different club (RLS would still reject the send).
+      // Always validate current-club membership, even if we already have an
+      // existing conversation with this user — otherwise a historical DM row
+      // with someone who has since left the club would bypass scoping.
       const { data: membership, error: memErr } = await supabase
         .from('club_members')
         .select('user_id')
         .eq('club_id', clubId)
         .eq('user_id', chatParam)
         .maybeSingle();
-      if (cancelled) return;
+      if (cancelled || capturedGen !== clubGenRef.current) return;
       if (memErr || !membership) {
         toast.error('That reader isn\u2019t in this club.');
         const params = new URLSearchParams(searchParams);
@@ -340,13 +371,18 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
         return;
       }
 
+      const existing = conversations.find(c => c.otherUserId === chatParam);
+      if (existing) {
+        setActiveConvo(existing);
+        return;
+      }
+
       const { data: p } = await supabase
         .from('profiles')
         .select('display_name, avatar_url')
         .eq('user_id', chatParam)
         .maybeSingle();
-      // Ignore results if the user switched clubs while we were checking.
-      if (cancelled) return;
+      if (cancelled || capturedGen !== clubGenRef.current) return;
       setActiveConvo({
         otherUserId: chatParam,
         otherUserName: p?.display_name || 'Reader',
@@ -434,12 +470,14 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     if (!clubId) return;
     if (allMembers.length === 0) {
       setLoadingMembers(true);
+      const capturedGen = clubGenRef.current;
       // Scope the picker to the current club's members so people from sibling
       // clubs never appear as suggested DM recipients.
       const { data } = await supabase
         .from('club_members')
         .select('user_id, profile:profiles!inner(user_id, display_name, avatar_url)')
         .eq('club_id', clubId);
+      if (capturedGen !== clubGenRef.current) return;
       if (data) {
         const rows = (data as any[])
           .map((r) => r.profile)
@@ -683,7 +721,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
           <button
             type="button"
             onClick={() => { setFetching(true); fetchConversations(); }}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-card px-3 py-1.5 text-xs font-semibold text-foreground border border-border/60 shadow-sm hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-card px-4 min-h-11 text-xs font-semibold text-foreground border border-border/60 shadow-sm hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Try again
           </button>
@@ -768,7 +806,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
                   <button
                     key={m.user_id}
                     onClick={() => selectMember(m)}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-accent"
+                    className="flex w-full min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <UserAvatar
                       userId={m.user_id}
@@ -849,7 +887,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
                     </Link>
                     <button
                       onClick={() => { setShowMembers(false); selectMember(m); }}
-                      className="cozy-btn-ghost shrink-0 p-2 text-primary"
+                      className="cozy-btn-ghost inline-flex shrink-0 items-center justify-center min-h-11 min-w-11 text-primary"
                       title={`Message ${m.display_name || 'Reader'}`}
                     >
                       <Send className="h-4 w-4" />

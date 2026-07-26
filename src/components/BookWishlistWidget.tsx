@@ -58,6 +58,10 @@ const BookWishlistWidget = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   // Track voting state per suggestion id to disable rapid re-clicks.
   const [pendingVotes, setPendingVotes] = useState<Set<string>>(new Set());
+  const [deletingSuggestion, setDeletingSuggestion] = useState<string | null>(null);
+  const [deletingComment, setDeletingComment] = useState<string | null>(null);
+  const [postingComment, setPostingComment] = useState(false);
+  const [commentsError, setCommentsError] = useState(false);
   // Generation counter — bumped on club switch so late fetches for a
   // previously-active club can't overwrite the new club's suggestions.
   const genRef = useRef(0);
@@ -187,7 +191,10 @@ const BookWishlistWidget = () => {
 
 
   const deleteSuggestion = async (id: string) => {
+    if (deletingSuggestion === id) return;
+    setDeletingSuggestion(id);
     const { error } = await supabase.from('book_votes').delete().eq('id', id);
+    setDeletingSuggestion(null);
     if (error) {
       toast.error("Couldn't remove that suggestion. Please try again.");
       return;
@@ -236,32 +243,60 @@ const BookWishlistWidget = () => {
     fetchComments(id);
   };
 
-  const fetchComments = async (suggestionId: string) => {
-    const { data } = await supabase
+  const fetchComments = async (
+    suggestionId: string,
+    gen: number = genRef.current,
+  ) => {
+    setCommentsError(false);
+    const { data, error } = await supabase
       .from('suggestion_comments')
       .select('*, profiles(display_name)')
       .eq('suggestion_id', suggestionId)
       .order('created_at', { ascending: true });
-    if (data) setComments(data as any);
+    // Drop the result if the club changed or the expanded suggestion changed
+    // while we were fetching — otherwise a stale response overwrites the new
+    // expansion's comments.
+    if (gen !== genRef.current) return;
+    if (expandedId !== null && expandedId !== suggestionId) return;
+    if (error) {
+      setCommentsError(true);
+      return;
+    }
+    setComments((data as any) || []);
   };
 
   const addComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !expandedId || !user) return;
+    const trimmed = newComment.trim();
+    if (!trimmed || !expandedId || !user || postingComment) return;
 
-    await supabase.from('suggestion_comments').insert({
+    setPostingComment(true);
+    const { error } = await supabase.from('suggestion_comments').insert({
       suggestion_id: expandedId,
       user_id: user.id,
       club_id: clubId,
-      message: newComment.trim(),
+      message: trimmed,
     } as any);
+    setPostingComment(false);
 
+    if (error) {
+      // Keep the draft intact so the user can retry without retyping.
+      toast.error("Couldn't post that comment. Please try again.");
+      return;
+    }
     setNewComment('');
     fetchComments(expandedId);
   };
 
   const deleteComment = async (id: string) => {
-    await supabase.from('suggestion_comments').delete().eq('id', id);
+    if (deletingComment === id) return;
+    setDeletingComment(id);
+    const { error } = await supabase.from('suggestion_comments').delete().eq('id', id);
+    setDeletingComment(null);
+    if (error) {
+      toast.error("Couldn't remove that comment. Please try again.");
+      return;
+    }
     if (expandedId) fetchComments(expandedId);
   };
 
@@ -422,7 +457,9 @@ const BookWishlistWidget = () => {
                       type="button"
                       onClick={() => setPendingDelete({ type: 'suggestion', id: s.id })}
                       aria-label={isPrivileged && user?.id !== s.user_id ? 'Remove suggestion (admin)' : 'Delete suggestion'}
-                      className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-md text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-ring transition-all"
+                      disabled={deletingSuggestion === s.id}
+                      aria-busy={deletingSuggestion === s.id}
+                      className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-md text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10 focus-visible:ring-2 focus-visible:ring-ring transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <X className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -432,7 +469,9 @@ const BookWishlistWidget = () => {
 
               {expandedId === s.id && (
                 <div className="ml-8 mt-0 mb-3 space-y-1.5 border-l-2 border-terracotta/20 pl-4">
-                  {comments.length === 0 ? (
+                  {commentsError ? (
+                    <p className="py-2 text-xs text-destructive font-body">Couldn't load comments.</p>
+                  ) : comments.length === 0 ? (
                     <p className="py-2 text-xs text-muted-foreground font-body">No comments yet</p>
                   ) : (
                     comments.map((c) => (
@@ -447,7 +486,9 @@ const BookWishlistWidget = () => {
                             type="button"
                             onClick={() => setPendingDelete({ type: 'comment', id: c.id })}
                             aria-label="Delete comment"
-                            className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-md text-muted-foreground/70 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring transition-colors"
+                            disabled={deletingComment === c.id}
+                            aria-busy={deletingComment === c.id}
+                            className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-md text-muted-foreground/70 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <X className="h-4 w-4" aria-hidden="true" />
                           </button>
@@ -465,13 +506,16 @@ const BookWishlistWidget = () => {
                       onChange={(e) => setNewComment(e.target.value)}
                       placeholder="Add a comment..."
                       aria-label="Add a comment"
-                      className="cozy-input flex-1 text-xs min-h-11"
+                      disabled={postingComment}
+                      className="cozy-input flex-1 text-xs min-h-11 disabled:opacity-60"
                       maxLength={300}
                     />
                     <button
                       type="submit"
                       aria-label="Send comment"
-                      className="cozy-btn-primary inline-flex items-center justify-center min-h-11 min-w-11 px-2"
+                      disabled={postingComment || !newComment.trim()}
+                      aria-busy={postingComment}
+                      className="cozy-btn-primary inline-flex items-center justify-center min-h-11 min-w-11 px-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Send className="h-4 w-4" aria-hidden="true" />
                     </button>

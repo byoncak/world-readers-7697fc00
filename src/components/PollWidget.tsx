@@ -73,11 +73,14 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
 
     const pollIds = parsed.map((p: Poll) => p.id);
     if (pollIds.length > 0) {
-      const { data: voteData } = await supabase
+      const { data: voteData, error: voteErr } = await supabase
         .from('poll_votes')
         .select('poll_id, user_id, option_index')
         .in('poll_id', pollIds);
       if (gen !== genRef.current) return;
+      // A silent vote-query failure would render polls with 0 votes and let
+      // users double-vote — surface the error so the retry UI shows.
+      if (voteErr) { setError(true); return; }
       setVotes((voteData as PollVote[]) || []);
     } else {
       setVotes([]);
@@ -100,9 +103,10 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
 
   const toggleVote = async (pollId: string, optionIndex: number, poll: Poll) => {
     if (!user || !clubId) return;
-    const key = `${pollId}:${optionIndex}`;
-    // Ignore repeat clicks while a write for the same option is in flight.
-    if (saving.has(key)) return;
+    // Lock the WHOLE poll while any write is in flight — otherwise two
+    // options on the same single-choice poll can race and leave the user
+    // with two votes.
+    if (saving.has(pollId)) return;
 
     const myVotes = votes.filter(v => v.poll_id === pollId && v.user_id === user.id);
     const alreadyVoted = myVotes.some(v => v.option_index === optionIndex);
@@ -110,7 +114,7 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
 
     setSaving((prev) => {
       const next = new Set(prev);
-      next.add(key);
+      next.add(pollId);
       return next;
     });
 
@@ -147,7 +151,7 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
 
     setSaving((prev) => {
       const next = new Set(prev);
-      next.delete(key);
+      next.delete(pollId);
       return next;
     });
 
@@ -163,8 +167,15 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
 
   if (error) {
     return (
-      <div role="alert" className="flex flex-1 items-center justify-center">
+      <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-2">
         <p className="text-sm text-muted-foreground font-body">Couldn&rsquo;t load polls.</p>
+        <button
+          type="button"
+          onClick={() => { setError(false); if (clubId) fetchPolls(clubId); }}
+          className="inline-flex items-center justify-center min-h-11 rounded-lg bg-card px-4 text-xs font-semibold text-foreground border border-border/60 shadow-sm hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -201,7 +212,7 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
                 const optVotes = pollVotes.filter(v => v.option_index === idx).length;
                 const pct = totalVoters > 0 ? Math.round((optVotes / totalVoters) * 100) : 0;
                 const isSelected = myVotes.some(v => v.option_index === idx);
-                const isSaving = saving.has(`${poll.id}:${idx}`);
+                const isSaving = saving.has(poll.id);
 
                 return (
                   <button

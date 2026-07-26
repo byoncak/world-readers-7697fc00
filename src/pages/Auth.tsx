@@ -3,6 +3,7 @@ import { Navigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { validateAuthForm } from '@/lib/guards';
 
 import worldReadersLogo from '@/assets/world-readers-logo.png.asset.json';
 
@@ -108,25 +109,17 @@ const Auth = () => {
 
     // Client-side validation runs BEFORE any backend call so empty/short
     // password submissions never reach Supabase.
+    const validationError = validateAuthForm({
+      name,
+      password,
+      confirmPassword,
+      mode,
+    });
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     const trimmedName = name.trim();
-    if (!trimmedName) {
-      setError('Please enter your name.');
-      return;
-    }
-    if (mode !== 'forgot') {
-      if (!password) {
-        setError('Please enter your password.');
-        return;
-      }
-      if (password.length < 6) {
-        setError('Password must be at least 6 characters.');
-        return;
-      }
-    }
-    if (mode === 'signup' && password !== confirmPassword) {
-      setError('Passwords don’t match.');
-      return;
-    }
 
     setSubmitting(true);
     const email = nameToEmail(trimmedName);
