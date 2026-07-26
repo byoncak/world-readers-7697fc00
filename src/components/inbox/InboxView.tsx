@@ -39,6 +39,15 @@ const MAX_MEDIA_SIZE = 20 * 1024 * 1024;
 const IMAGE_PREFIX = '[image] ';
 const VIDEO_PREFIX = '[video] ';
 
+// Typed result so callers can decide whether to preserve a draft, retry,
+// or silently drop the outcome. `sendDirectMessage` owns the single
+// friendly toast for real failures — callers must NOT double-toast.
+type SendResult =
+  | { status: 'sent' }     // insert succeeded
+  | { status: 'retry' }    // transient failure; caller may preserve draft
+  | { status: 'invalid' }  // confirmed non-member; do not preserve draft
+  | { status: 'stale' };   // club/convo switched mid-send; no-op
+
 interface InboxViewProps {
   embedded?: boolean;
 }
