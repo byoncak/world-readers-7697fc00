@@ -152,15 +152,32 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   }, [user]);
 
   const sendDirectMessage = useCallback(async (message: string) => {
-    if (!user || !activeConvo || sending) return false;
+    if (!user || !activeConvo || sending || !clubId) return false;
+    const capturedGen = clubGenRef.current;
+    const capturedClubId = clubId;
+    const capturedReceiver = activeConvo.otherUserId;
 
-    const optimisticMsg = buildOptimisticMessage(message, activeConvo.otherUserId);
+    // Re-verify current membership right before sending so a club switch
+    // (or the receiver leaving mid-conversation) can't leak a message.
+    const { data: membership } = await supabase
+      .from('club_members')
+      .select('user_id')
+      .eq('club_id', capturedClubId)
+      .eq('user_id', capturedReceiver)
+      .maybeSingle();
+    if (capturedGen !== clubGenRef.current) return false;
+    if (!membership) {
+      toast.error('That reader is no longer in this club.');
+      return false;
+    }
+
+    const optimisticMsg = buildOptimisticMessage(message, capturedReceiver);
     pushOptimisticMessage(optimisticMsg);
 
     const { error } = await supabase.from('direct_messages').insert({
       sender_id: user.id,
-      receiver_id: activeConvo.otherUserId,
-      club_id: clubId,
+      receiver_id: capturedReceiver,
+      club_id: capturedClubId,
       message,
     } as any);
 
@@ -177,6 +194,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   const fetchConversations = useCallback(async () => {
     if (!user || !clubId) { setFetching(false); return; }
     setConvError(false);
+    const capturedGen = clubGenRef.current;
 
     const { data: allMessages, error: fetchErr } = await supabase
       .from('direct_messages')
@@ -185,6 +203,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order('created_at', { ascending: false });
 
+    if (capturedGen !== clubGenRef.current) return;
     if (fetchErr) { setConvError(true); setFetching(false); return; }
     if (!allMessages) { setFetching(false); return; }
 
@@ -202,6 +221,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .from('profiles')
       .select('user_id, display_name, avatar_url')
       .in('user_id', otherIds);
+    if (capturedGen !== clubGenRef.current) return;
 
     const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
@@ -228,6 +248,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   const fetchMessages = useCallback(async () => {
     if (!user || !activeConvo || !clubId) return;
     const otherId = activeConvo.otherUserId;
+    const capturedGen = clubGenRef.current;
 
     const { data } = await supabase
       .from('direct_messages')
@@ -236,6 +257,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${user.id})`)
       .order('created_at', { ascending: true });
 
+    if (capturedGen !== clubGenRef.current) return;
     if (data) setMessages(data);
 
     await supabase
@@ -245,6 +267,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .eq('sender_id', otherId)
       .eq('receiver_id', user.id)
       .eq('read', false);
+    if (capturedGen !== clubGenRef.current) return;
 
     setConversations(prev =>
       prev.map(c => c.otherUserId === otherId ? { ...c, unreadCount: 0 } : c)
