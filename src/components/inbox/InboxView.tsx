@@ -220,7 +220,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order('created_at', { ascending: false });
 
-    if (capturedGen !== clubGenRef.current) return;
+    if (isStaleGen(capturedGen, clubGenRef.current)) return;
     if (fetchErr) { setConvError(true); setFetching(false); return; }
     if (!allMessages) { setFetching(false); return; }
 
@@ -238,7 +238,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .from('profiles')
       .select('user_id, display_name, avatar_url')
       .in('user_id', otherIds);
-    if (capturedGen !== clubGenRef.current) return;
+    if (isStaleGen(capturedGen, clubGenRef.current)) return;
 
     const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
@@ -274,7 +274,11 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${user.id})`)
       .order('created_at', { ascending: true });
 
-    if (capturedGen !== clubGenRef.current) return;
+    // Guard against BOTH cross-club and same-club-different-conversation
+    // races: if the user rapidly opens B after A, A's response must not
+    // overwrite B's messages.
+    if (isStaleGen(capturedGen, clubGenRef.current)) return;
+    if (activeConvoRef.current?.otherUserId !== otherId) return;
     if (data) setMessages(data);
 
     await supabase
@@ -284,7 +288,8 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .eq('sender_id', otherId)
       .eq('receiver_id', user.id)
       .eq('read', false);
-    if (capturedGen !== clubGenRef.current) return;
+    if (isStaleGen(capturedGen, clubGenRef.current)) return;
+    if (activeConvoRef.current?.otherUserId !== otherId) return;
 
     setConversations(prev =>
       prev.map(c => c.otherUserId === otherId ? { ...c, unreadCount: 0 } : c)
