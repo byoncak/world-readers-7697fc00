@@ -422,11 +422,15 @@ const CurrentBookWidget = () => {
                   onSubmit={(e) => {
                     e.preventDefault();
                     const val = Math.max(0, Math.min(totalPages, parseInt(pageInput) || 0));
+                    // Lock the commit so the input's paired onBlur, which
+                    // fires right after Enter, cannot double-submit.
+                    commitLockRef.current = true;
                     setMyPage(val);
                     setEditingPage(false);
-                    // Save the freshly-computed value directly so a stale
-                    // myPage closure never overwrites the user's edit.
                     updateProgress(val);
+                    // Release the lock on the next tick — after onBlur has
+                    // observed and skipped its duplicate write.
+                    setTimeout(() => { commitLockRef.current = false; }, 0);
                   }}
                   className="min-w-[60px]"
                 >
@@ -438,24 +442,26 @@ const CurrentBookWidget = () => {
                     value={pageInput}
                     onChange={(e) => setPageInput(e.target.value)}
                     onBlur={() => {
+                      if (commitLockRef.current) return;
                       const val = Math.max(0, Math.min(totalPages, parseInt(pageInput) || 0));
                       setMyPage(val);
                       setEditingPage(false);
                       updateProgress(val);
                     }}
                     aria-label="Type a page number"
-                    className="w-[78px] rounded-lg border-2 border-terracotta bg-background px-2 py-1 text-center text-sm font-semibold text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40"
+                    className="w-[88px] min-h-11 rounded-lg border-2 border-terracotta bg-background px-2 py-1 text-center text-sm font-semibold text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40"
                     autoFocus
                   />
                 </form>
               ) : (
                 <button
+                  type="button"
                   onClick={() => {
                     setPageInput(String(myPage));
                     setEditingPage(true);
                   }}
                   aria-label={`Change page number (currently ${myPage} of ${totalPages})`}
-                  className="inline-flex min-w-[78px] items-center justify-center gap-1 rounded-lg border border-border bg-muted/40 px-2 py-1 text-sm font-semibold text-foreground font-body hover:border-terracotta hover:bg-muted cursor-pointer transition-colors"
+                  className="inline-flex min-h-11 min-w-[88px] items-center justify-center gap-1 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm font-semibold text-foreground font-body hover:border-terracotta hover:bg-muted cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span className="text-terracotta">{myPage}</span>
                   <span className="text-muted-foreground">/{totalPages}</span>
