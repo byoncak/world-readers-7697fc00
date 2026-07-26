@@ -29,7 +29,7 @@ import {
 
 const kindMeta: Record<ActivityItem['kind'], { icon: any; tint: string }> = {
   completion: { icon: BookCheck, tint: 'text-emerald-600' },
-  personal_completion: { icon: BookCheck, tint: 'text-emerald-600' },
+  
   quote: { icon: Quote, tint: 'text-violet-600' },
   rating: { icon: Star, tint: 'text-amber-500' },
   join: { icon: UserPlus, tint: 'text-sky-600' },
