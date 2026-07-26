@@ -15,6 +15,7 @@ import MobileFab from '@/components/MobileFab';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { isStaleGen } from '@/lib/guards';
 
 interface Conversation {
   otherUserId: string;
@@ -159,13 +160,25 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
 
     // Re-verify current membership right before sending so a club switch
     // (or the receiver leaving mid-conversation) can't leak a message.
-    const { data: membership } = await supabase
+    const { data: membership, error: memErr } = await supabase
       .from('club_members')
       .select('user_id')
       .eq('club_id', capturedClubId)
       .eq('user_id', capturedReceiver)
       .maybeSingle();
-    if (capturedGen !== clubGenRef.current) return false;
+    // After the async boundary, re-confirm we're still in the same club,
+    // targeting the same conversation, before we do anything with the
+    // membership result — a stale response must not send.
+    if (isStaleGen(capturedGen, clubGenRef.current)) return false;
+    if (clubIdRef.current !== capturedClubId) return false;
+    if (activeConvoRef.current?.otherUserId !== capturedReceiver) return false;
+    if (memErr) {
+      // Distinguish a transient membership-query failure from a confirmed
+      // non-member so we don't tell the user their friend "isn't in this
+      // club" when the check itself just failed.
+      toast.error("Couldn't verify membership. Please try again.");
+      return false;
+    }
     if (!membership) {
       toast.error('That reader is no longer in this club.');
       return false;
@@ -182,7 +195,11 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     } as any);
 
     if (error) {
-      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+      // Only roll back the optimistic row if the view still owns it —
+      // a club switch mid-send has already cleared messages.
+      if (!isStaleGen(capturedGen, clubGenRef.current)) {
+        setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+      }
       return false;
     }
 
@@ -203,7 +220,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order('created_at', { ascending: false });
 
-    if (capturedGen !== clubGenRef.current) return;
+    if (isStaleGen(capturedGen, clubGenRef.current)) return;
     if (fetchErr) { setConvError(true); setFetching(false); return; }
     if (!allMessages) { setFetching(false); return; }
 
@@ -221,7 +238,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .from('profiles')
       .select('user_id, display_name, avatar_url')
       .in('user_id', otherIds);
-    if (capturedGen !== clubGenRef.current) return;
+    if (isStaleGen(capturedGen, clubGenRef.current)) return;
 
     const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
@@ -257,7 +274,11 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${user.id})`)
       .order('created_at', { ascending: true });
 
-    if (capturedGen !== clubGenRef.current) return;
+    // Guard against BOTH cross-club and same-club-different-conversation
+    // races: if the user rapidly opens B after A, A's response must not
+    // overwrite B's messages.
+    if (isStaleGen(capturedGen, clubGenRef.current)) return;
+    if (activeConvoRef.current?.otherUserId !== otherId) return;
     if (data) setMessages(data);
 
     await supabase
@@ -267,7 +288,8 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       .eq('sender_id', otherId)
       .eq('receiver_id', user.id)
       .eq('read', false);
-    if (capturedGen !== clubGenRef.current) return;
+    if (isStaleGen(capturedGen, clubGenRef.current)) return;
+    if (activeConvoRef.current?.otherUserId !== otherId) return;
 
     setConversations(prev =>
       prev.map(c => c.otherUserId === otherId ? { ...c, unreadCount: 0 } : c)
@@ -362,7 +384,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
         .eq('club_id', clubId)
         .eq('user_id', chatParam)
         .maybeSingle();
-      if (cancelled || capturedGen !== clubGenRef.current) return;
+      if (cancelled || isStaleGen(capturedGen, clubGenRef.current)) return;
       if (memErr || !membership) {
         toast.error('That reader isn\u2019t in this club.');
         const params = new URLSearchParams(searchParams);
@@ -382,7 +404,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
         .select('display_name, avatar_url')
         .eq('user_id', chatParam)
         .maybeSingle();
-      if (cancelled || capturedGen !== clubGenRef.current) return;
+      if (cancelled || isStaleGen(capturedGen, clubGenRef.current)) return;
       setActiveConvo({
         otherUserId: chatParam,
         otherUserName: p?.display_name || 'Reader',
@@ -477,7 +499,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
         .from('club_members')
         .select('user_id, profile:profiles!inner(user_id, display_name, avatar_url)')
         .eq('club_id', clubId);
-      if (capturedGen !== clubGenRef.current) return;
+      if (isStaleGen(capturedGen, clubGenRef.current)) return;
       if (data) {
         const rows = (data as any[])
           .map((r) => r.profile)

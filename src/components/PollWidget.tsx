@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import StyledName from './StyledName';
+import { isStaleGen } from '@/lib/guards';
 
 interface Poll {
   id: string;
@@ -61,7 +62,7 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
       .eq('club_id', activeClubId)
       .order('created_at', { ascending: false });
 
-    if (gen !== genRef.current) return;
+    if (isStaleGen(gen, genRef.current)) return;
     if (pollErr) { setError(true); return; }
     if (!pollData) return;
 
@@ -77,7 +78,7 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
         .from('poll_votes')
         .select('poll_id, user_id, option_index')
         .in('poll_id', pollIds);
-      if (gen !== genRef.current) return;
+      if (isStaleGen(gen, genRef.current)) return;
       // A silent vote-query failure would render polls with 0 votes and let
       // users double-vote — surface the error so the retry UI shows.
       if (voteErr) { setError(true); return; }
@@ -92,7 +93,7 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
         .from('profiles')
         .select('user_id, display_name')
         .in('user_id', creatorIds);
-      if (gen !== genRef.current) return;
+      if (isStaleGen(gen, genRef.current)) return;
       if (profileData) {
         const map: Record<string, string> = {};
         profileData.forEach((p: any) => { map[p.user_id] = p.display_name || 'Reader'; });
@@ -156,7 +157,7 @@ const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
     });
 
     // Ignore results from a poll interaction on a club we've since left.
-    if (capturedGen !== genRef.current) return;
+    if (isStaleGen(capturedGen, genRef.current)) return;
 
     if (opErr) {
       toast.error("Couldn't record your vote. Try again.");
