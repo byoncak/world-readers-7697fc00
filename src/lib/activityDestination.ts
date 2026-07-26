@@ -18,7 +18,6 @@ export function activityDestination(
 
   switch (item.kind) {
     case 'completion':
-    case 'personal_completion':
     case 'rating':
     case 'join':
       return memberLink();
