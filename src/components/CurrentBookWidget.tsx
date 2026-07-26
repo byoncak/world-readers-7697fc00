@@ -180,16 +180,17 @@ const CurrentBookWidget = () => {
     }
   };
 
-  const updateProgress = async () => {
+  const updateProgress = async (intendedPage: number) => {
     if (!book || !user || !clubId) return;
-    setUpdating(true);
     const total = book.total_pages || 1;
     const prevPage = progress.find((p) => p.user_id === user.id)?.current_page ?? 0;
-    // Clamp the new page to [0, total] so we never push over-max writes.
-    const newPage = Math.max(0, Math.min(total, myPage));
+    // Clamp the intended page to [0, total] so we never push over-max writes.
+    const newPage = Math.max(0, Math.min(total, Math.round(intendedPage)));
     const pagesGained = newPage - prevPage;
     const nowComplete = prevPage < total && newPage >= total;
-    await supabase
+
+    setUpdating(true);
+    const { error } = await supabase
       .from('reading_progress')
       .upsert({
         user_id: user.id,
@@ -198,6 +199,13 @@ const CurrentBookWidget = () => {
         current_page: newPage,
         last_updated: new Date().toISOString(),
       }, { onConflict: 'user_id,book_id' });
+    setUpdating(false);
+
+    if (error) {
+      // Keep the user's typed/slid page visible so they can retry.
+      toast.error("Couldn't save your progress. Please try again.");
+      return;
+    }
 
     // Best-effort: use the current user's known display name so their own
     // row never renders as "Reader" while we wait for the next fetch.
@@ -227,7 +235,6 @@ const CurrentBookWidget = () => {
         },
       ];
     });
-    setUpdating(false);
 
     // ── Celebrate the update ──
     setJustSaved(true);
@@ -247,6 +254,7 @@ const CurrentBookWidget = () => {
       }, 350);
     }
   };
+
 
   if (bookLoading && !book) {
     return (
