@@ -71,12 +71,6 @@ function ItemBody({ item }: { item: ActivityItem }) {
           {name} finished the book club read of {book ?? 'the book'}. 📖
         </p>
       );
-    case 'personal_completion':
-      return (
-        <p className="text-sm">
-          {name} finished their personal read of {book ?? 'a book'}. 🌱
-        </p>
-      );
     case 'quote':
       return (
         <div className="space-y-1.5">
