@@ -317,22 +317,16 @@ const CurrentBookWidget = () => {
         {/* Book Info */}
         <div className="flex-1">
           <h2 className="font-display text-2xl md:text-4xl font-bold text-foreground not-italic leading-tight" style={{ fontStyle: 'normal' }}>{book.title}</h2>
-          <p className="mt-1 font-body text-xs text-muted-foreground/70">by {book.author}</p>
+          <p className="mt-1 font-body text-xs text-muted-foreground">by {book.author}</p>
 
-          {book.meeting_date && (() => {
-            const days = Math.ceil(
-              (new Date(book.meeting_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-            );
-            if (days < 0 || days > 5) return null;
-            return (
-              <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4 text-terracotta" />
-                <span className="font-body">
-                  Meeting: {format(new Date(book.meeting_date), 'MMMM d, yyyy')}
-                </span>
-              </div>
-            );
-          })()}
+          {book.meeting_date && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <Calendar className="h-4 w-4 text-terracotta" aria-hidden="true" />
+              <span className="font-body">
+                Meeting: {format(new Date(book.meeting_date), 'MMMM d, yyyy')}
+              </span>
+            </div>
+          )}
 
           {/* My Progress */}
           <div className="mt-3">
@@ -355,6 +349,8 @@ const CurrentBookWidget = () => {
                 step={1}
                 value={[myPage]}
                 onValueChange={(val) => setMyPage(val[0])}
+                onValueCommit={() => updateProgress()}
+                aria-label="Your current page"
                 className="flex-1"
               />
               {editingPage ? (
@@ -364,6 +360,8 @@ const CurrentBookWidget = () => {
                     const val = Math.max(0, Math.min(totalPages, parseInt(pageInput) || 0));
                     setMyPage(val);
                     setEditingPage(false);
+                    // Auto-save typed value on submit so users never lose their edit.
+                    setTimeout(() => updateProgress(), 0);
                   }}
                   className="min-w-[60px]"
                 >
@@ -378,7 +376,9 @@ const CurrentBookWidget = () => {
                       const val = Math.max(0, Math.min(totalPages, parseInt(pageInput) || 0));
                       setMyPage(val);
                       setEditingPage(false);
+                      setTimeout(() => updateProgress(), 0);
                     }}
+                    aria-label="Type a page number"
                     className="w-[78px] rounded-lg border-2 border-terracotta bg-background px-2 py-1 text-center text-sm font-semibold text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-terracotta/40"
                     autoFocus
                   />
@@ -389,25 +389,22 @@ const CurrentBookWidget = () => {
                     setPageInput(String(myPage));
                     setEditingPage(true);
                   }}
+                  aria-label={`Change page number (currently ${myPage} of ${totalPages})`}
                   className="inline-flex min-w-[78px] items-center justify-center gap-1 rounded-lg border border-border bg-muted/40 px-2 py-1 text-sm font-semibold text-foreground font-body hover:border-terracotta hover:bg-muted cursor-pointer transition-colors"
-                  title="Tap to type a page number"
                 >
                   <span className="text-terracotta">{myPage}</span>
                   <span className="text-muted-foreground">/{totalPages}</span>
-                  <Pencil className="h-3 w-3 text-muted-foreground/70" />
+                  <Pencil className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
                 </button>
               )}
-              <button
-                onClick={updateProgress}
-                disabled={updating || justSaved}
-                className={`text-sm transition-all duration-300 ${
-                  justSaved
-                    ? 'cozy-btn animate-saved-nudge bg-sage text-secondary-foreground'
-                    : 'cozy-btn-primary'
+              <span
+                aria-live="polite"
+                className={`inline-flex min-w-[64px] items-center justify-center text-xs font-body transition-opacity ${
+                  updating ? 'text-muted-foreground opacity-100' : justSaved ? 'text-sage opacity-100' : 'opacity-0'
                 }`}
               >
-                {updating ? '...' : justSaved ? 'Saved ✓' : 'Save'}
-              </button>
+                {updating ? 'Saving…' : justSaved ? 'Saved ✓' : ''}
+              </span>
             </div>
           </div>
 
