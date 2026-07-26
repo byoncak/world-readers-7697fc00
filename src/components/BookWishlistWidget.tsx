@@ -78,6 +78,18 @@ const BookWishlistWidget = () => {
     setCurrentBookId(null);
     setLoadError(null);
     setPendingVotes(new Set());
+    // Any per-operation / per-comment pending or error state from the
+    // previous club must not survive the switch — clear it all so the
+    // new club never renders stale spinners or expanded comment threads.
+    setExpandedId(null);
+    expandedIdRef.current = null;
+    setComments([]);
+    setNewComment('');
+    setPendingDelete(null);
+    setDeletingSuggestion(null);
+    setDeletingComment(null);
+    setPostingComment(false);
+    setCommentsError(false);
     if (!clubId) return;
     const gen = genRef.current;
     (async () => {
@@ -88,7 +100,7 @@ const BookWishlistWidget = () => {
         .eq('status', 'current')
         .eq('club_id', clubId)
         .maybeSingle();
-      if (gen !== genRef.current) return;
+      if (isStaleGen(gen, genRef.current)) return;
       if (bookErr) {
         setLoadError('Could not load suggestions.');
         setLoading(false);
@@ -97,7 +109,7 @@ const BookWishlistWidget = () => {
       const bookId = current?.id || null;
       setCurrentBookId(bookId);
       await fetchSuggestions(bookId, gen);
-      if (gen === genRef.current) setLoading(false);
+      if (!isStaleGen(gen, genRef.current)) setLoading(false);
     })();
   }, [clubId]);
 
