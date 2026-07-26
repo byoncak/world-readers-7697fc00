@@ -63,6 +63,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const composerFormRef = useRef<HTMLFormElement>(null);
   const chatParam = searchParams.get('chat');
   const dialogParam = searchParams.get('dialog');
 
