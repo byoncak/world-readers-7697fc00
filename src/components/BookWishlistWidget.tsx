@@ -58,6 +58,10 @@ const BookWishlistWidget = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   // Track voting state per suggestion id to disable rapid re-clicks.
   const [pendingVotes, setPendingVotes] = useState<Set<string>>(new Set());
+  const [deletingSuggestion, setDeletingSuggestion] = useState<string | null>(null);
+  const [deletingComment, setDeletingComment] = useState<string | null>(null);
+  const [postingComment, setPostingComment] = useState(false);
+  const [commentsError, setCommentsError] = useState(false);
   // Generation counter — bumped on club switch so late fetches for a
   // previously-active club can't overwrite the new club's suggestions.
   const genRef = useRef(0);
