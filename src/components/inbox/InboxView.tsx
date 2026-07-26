@@ -349,23 +349,20 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     }
     if (!clubId) return;
     if (activeConvo?.otherUserId === chatParam) return;
-    const existing = conversations.find(c => c.otherUserId === chatParam);
-    if (existing) {
-      setActiveConvo(existing);
-      return;
-    }
+
     let cancelled = false;
+    const capturedGen = clubGenRef.current;
     (async () => {
-      // Validate the target is actually a member of the active club before
-      // opening a chat — this prevents deep links from surfacing users who
-      // belong to a different club (RLS would still reject the send).
+      // Always validate current-club membership, even if we already have an
+      // existing conversation with this user — otherwise a historical DM row
+      // with someone who has since left the club would bypass scoping.
       const { data: membership, error: memErr } = await supabase
         .from('club_members')
         .select('user_id')
         .eq('club_id', clubId)
         .eq('user_id', chatParam)
         .maybeSingle();
-      if (cancelled) return;
+      if (cancelled || capturedGen !== clubGenRef.current) return;
       if (memErr || !membership) {
         toast.error('That reader isn\u2019t in this club.');
         const params = new URLSearchParams(searchParams);
@@ -374,13 +371,18 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
         return;
       }
 
+      const existing = conversations.find(c => c.otherUserId === chatParam);
+      if (existing) {
+        setActiveConvo(existing);
+        return;
+      }
+
       const { data: p } = await supabase
         .from('profiles')
         .select('display_name, avatar_url')
         .eq('user_id', chatParam)
         .maybeSingle();
-      // Ignore results if the user switched clubs while we were checking.
-      if (cancelled) return;
+      if (cancelled || capturedGen !== clubGenRef.current) return;
       setActiveConvo({
         otherUserId: chatParam,
         otherUserName: p?.display_name || 'Reader',
@@ -468,12 +470,14 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     if (!clubId) return;
     if (allMembers.length === 0) {
       setLoadingMembers(true);
+      const capturedGen = clubGenRef.current;
       // Scope the picker to the current club's members so people from sibling
       // clubs never appear as suggested DM recipients.
       const { data } = await supabase
         .from('club_members')
         .select('user_id, profile:profiles!inner(user_id, display_name, avatar_url)')
         .eq('club_id', clubId);
+      if (capturedGen !== clubGenRef.current) return;
       if (data) {
         const rows = (data as any[])
           .map((r) => r.profile)
