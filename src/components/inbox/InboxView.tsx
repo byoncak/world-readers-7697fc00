@@ -411,16 +411,28 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   };
 
   const ensureMembersLoaded = async () => {
+    if (!clubId) return;
     if (allMembers.length === 0) {
       setLoadingMembers(true);
+      // Scope the picker to the current club's members so people from sibling
+      // clubs never appear as suggested DM recipients.
       const { data } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, avatar_url')
-        .order('display_name', { ascending: true });
-      if (data) setAllMembers(data.filter(m => m.user_id !== user?.id));
+        .from('club_members')
+        .select('user_id, profile:profiles!inner(user_id, display_name, avatar_url)')
+        .eq('club_id', clubId);
+      if (data) {
+        const rows = (data as any[])
+          .map((r) => r.profile)
+          .filter((p) => p && p.user_id !== user?.id)
+          .sort((a, b) =>
+            (a.display_name ?? '').localeCompare(b.display_name ?? '')
+          );
+        setAllMembers(rows);
+      }
       setLoadingMembers(false);
     }
   };
+
 
   const openMembersDialog = async () => {
     const params = new URLSearchParams(searchParams);
