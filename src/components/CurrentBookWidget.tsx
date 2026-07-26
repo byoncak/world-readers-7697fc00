@@ -179,7 +179,7 @@ const CurrentBookWidget = () => {
     }
   };
 
-  const fetchTodayCheers = async (bookId: string) => {
+  const fetchTodayCheers = async (bookId: string, gen: number = genRef.current) => {
     if (!user) return;
     const todayStart = startOfDay(new Date()).toISOString();
     const resetAt = Number(localStorage.getItem('selfCheerResetAt') || '0');
@@ -190,6 +190,8 @@ const CurrentBookWidget = () => {
       .eq('from_user_id', user.id)
       .eq('book_id', bookId)
       .gte('created_at', todayStart);
+
+    if (gen !== genRef.current) return;
 
     if (data) {
       const filtered = data.filter((c: any) => {
