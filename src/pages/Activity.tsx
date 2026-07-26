@@ -29,7 +29,7 @@ import {
 
 const kindMeta: Record<ActivityItem['kind'], { icon: any; tint: string }> = {
   completion: { icon: BookCheck, tint: 'text-emerald-600' },
-  personal_completion: { icon: BookCheck, tint: 'text-emerald-600' },
+  
   quote: { icon: Quote, tint: 'text-violet-600' },
   rating: { icon: Star, tint: 'text-amber-500' },
   join: { icon: UserPlus, tint: 'text-sky-600' },
@@ -69,12 +69,6 @@ function ItemBody({ item }: { item: ActivityItem }) {
       return (
         <p className="text-sm">
           {name} finished the book club read of {book ?? 'the book'}. 📖
-        </p>
-      );
-    case 'personal_completion':
-      return (
-        <p className="text-sm">
-          {name} finished their personal read of {book ?? 'a book'}. 🌱
         </p>
       );
     case 'quote':
@@ -173,8 +167,8 @@ function Row({ item, clubPath }: { item: ActivityItem; clubPath: (p?: string) =>
 }
 
 const Activity = () => {
-  const { data, isLoading, isError, refetch, isFetching } = useActivityFeed();
   const { clubId, clubPath } = useClub();
+  const { data, isLoading, isError, refetch, isFetching } = useActivityFeed(clubId);
   const [searchParams] = useSearchParams();
   const [pollSheetOpen, setPollSheetOpen] = useState(false);
   const [activePollCount, setActivePollCount] = useState(0);

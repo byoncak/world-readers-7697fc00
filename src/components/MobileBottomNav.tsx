@@ -6,8 +6,8 @@ import { useClub } from '@/contexts/ClubContext';
 
 const MobileBottomNav = () => {
   const { pathname } = useLocation();
-  const { hasAny: loungeHasUnread } = useLoungeUnread();
   const { clubId, clubPath } = useClub();
+  const { hasAny: loungeHasUnread } = useLoungeUnread(clubId);
   const navRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {

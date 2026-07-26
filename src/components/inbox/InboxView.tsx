@@ -44,7 +44,7 @@ interface InboxViewProps {
 
 const InboxView = ({ embedded = false }: InboxViewProps) => {
   const { user } = useAuth();
-  const { clubId } = useClub();
+  const { clubId, clubPath } = useClub();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -66,6 +66,17 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   const composerFormRef = useRef<HTMLFormElement>(null);
   const chatParam = searchParams.get('chat');
   const dialogParam = searchParams.get('dialog');
+
+  // Reset conversation-scoped state when the active club changes so DMs and
+  // realtime handlers from a sibling club never leak into the new club's view.
+  useEffect(() => {
+    setActiveConvo(null);
+    setMessages([]);
+    setConversations([]);
+    setAllMembers([]);
+    setFetching(true);
+  }, [clubId]);
+
 
   const updateChatParam = useCallback((nextChatId: string | null, opts?: { replace?: boolean }) => {
     const params = new URLSearchParams(searchParams);
@@ -161,14 +172,16 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     return true;
   }, [activeConvo, buildOptimisticMessage, pushOptimisticMessage, sending, user, clubId]);
 
-  // Fetch conversation list
+  // Fetch conversation list — scoped to the current club so a user active in
+  // multiple clubs does not see DMs across them.
   const fetchConversations = useCallback(async () => {
-    if (!user) return;
+    if (!user || !clubId) { setFetching(false); return; }
     setConvError(false);
 
     const { data: allMessages, error: fetchErr } = await supabase
       .from('direct_messages')
       .select('*')
+      .eq('club_id', clubId)
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order('created_at', { ascending: false });
 
@@ -210,15 +223,16 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     convos.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
     setConversations(convos);
     setFetching(false);
-  }, [user]);
+  }, [user, clubId]);
 
   const fetchMessages = useCallback(async () => {
-    if (!user || !activeConvo) return;
+    if (!user || !activeConvo || !clubId) return;
     const otherId = activeConvo.otherUserId;
 
     const { data } = await supabase
       .from('direct_messages')
       .select('*')
+      .eq('club_id', clubId)
       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${user.id})`)
       .order('created_at', { ascending: true });
 
@@ -227,6 +241,7 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     await supabase
       .from('direct_messages')
       .update({ read: true })
+      .eq('club_id', clubId)
       .eq('sender_id', otherId)
       .eq('receiver_id', user.id)
       .eq('read', false);
@@ -234,48 +249,57 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
     setConversations(prev =>
       prev.map(c => c.otherUserId === otherId ? { ...c, unreadCount: 0 } : c)
     );
-  }, [user, activeConvo]);
+  }, [user, activeConvo, clubId]);
 
   const activeConvoRef = useRef(activeConvo);
   activeConvoRef.current = activeConvo;
+  const clubIdRef = useRef(clubId);
+  clubIdRef.current = clubId;
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !clubId) return;
     fetchConversations();
 
     const channel = supabase
-      .channel('inbox-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages' }, (payload) => {
-        const msg = payload.new as Message;
-        const convo = activeConvoRef.current;
-        if (convo && (
-          (msg.sender_id === user.id && msg.receiver_id === convo.otherUserId) ||
-          (msg.sender_id === convo.otherUserId && msg.receiver_id === user.id)
-        )) {
-          setMessages(prev => {
-            if (prev.some(m => m.id === msg.id)) return prev;
-            const optimisticIdx = prev.findIndex(m =>
-              m.sender_id === msg.sender_id &&
-              m.message === msg.message &&
-              Math.abs(new Date(m.created_at).getTime() - new Date(msg.created_at).getTime()) < 10000
-            );
-            if (optimisticIdx !== -1) {
-              const updated = [...prev];
-              updated[optimisticIdx] = msg;
-              return updated;
+      .channel(`inbox-realtime:${clubId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'direct_messages', filter: `club_id=eq.${clubId}` },
+        (payload) => {
+          const msg = payload.new as Message & { club_id?: string };
+          // Defense-in-depth: also ignore cross-club rows that slip through.
+          if (msg.club_id && msg.club_id !== clubIdRef.current) return;
+          const convo = activeConvoRef.current;
+          if (convo && (
+            (msg.sender_id === user.id && msg.receiver_id === convo.otherUserId) ||
+            (msg.sender_id === convo.otherUserId && msg.receiver_id === user.id)
+          )) {
+            setMessages(prev => {
+              if (prev.some(m => m.id === msg.id)) return prev;
+              const optimisticIdx = prev.findIndex(m =>
+                m.sender_id === msg.sender_id &&
+                m.message === msg.message &&
+                Math.abs(new Date(m.created_at).getTime() - new Date(msg.created_at).getTime()) < 10000
+              );
+              if (optimisticIdx !== -1) {
+                const updated = [...prev];
+                updated[optimisticIdx] = msg;
+                return updated;
+              }
+              return [...prev, msg];
+            });
+            if (msg.receiver_id === user.id) {
+              supabase.from('direct_messages').update({ read: true }).eq('id', msg.id).then();
             }
-            return [...prev, msg];
-          });
-          if (msg.receiver_id === user.id) {
-            supabase.from('direct_messages').update({ read: true }).eq('id', msg.id).then();
           }
+          fetchConversations();
         }
-        fetchConversations();
-      })
+      )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user, fetchConversations]);
+  }, [user, clubId, fetchConversations]);
+
 
   useEffect(() => {
     if (activeConvo) fetchMessages();
@@ -387,16 +411,28 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
   };
 
   const ensureMembersLoaded = async () => {
+    if (!clubId) return;
     if (allMembers.length === 0) {
       setLoadingMembers(true);
+      // Scope the picker to the current club's members so people from sibling
+      // clubs never appear as suggested DM recipients.
       const { data } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, avatar_url')
-        .order('display_name', { ascending: true });
-      if (data) setAllMembers(data.filter(m => m.user_id !== user?.id));
+        .from('club_members')
+        .select('user_id, profile:profiles!inner(user_id, display_name, avatar_url)')
+        .eq('club_id', clubId);
+      if (data) {
+        const rows = (data as any[])
+          .map((r) => r.profile)
+          .filter((p) => p && p.user_id !== user?.id)
+          .sort((a, b) =>
+            (a.display_name ?? '').localeCompare(b.display_name ?? '')
+          );
+        setAllMembers(rows);
+      }
       setLoadingMembers(false);
     }
   };
+
 
   const openMembersDialog = async () => {
     const params = new URLSearchParams(searchParams);
@@ -422,14 +458,16 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
       <div className={`flex h-full min-h-0 flex-col overflow-hidden ${embedded ? '' : 'mx-auto max-w-2xl px-4 py-2 sm:py-6'}`}>
         <div className="mb-2 flex shrink-0 items-center gap-3">
           <button
+            type="button"
+            aria-label="Back to conversations"
             onClick={() => {
               setShowGifPicker(false);
               if (window.history.length > 1) navigate(-1);
               else updateChatParam(null);
             }}
-            className="cozy-btn-ghost p-2 shrink-0"
+            className="cozy-btn-ghost shrink-0 flex items-center justify-center min-h-11 min-w-11 p-2"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
           </button>
           <UserAvatar
             userId={activeConvo.otherUserId}
@@ -533,25 +571,28 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
               <div className="flex items-center gap-1 pt-1 border-t border-border/30">
                 <button
                   type="button"
+                  aria-label="Attach photo"
                   onClick={() => imageInputRef.current?.click()}
-                  className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground/70 hover:text-primary hover:bg-primary/10 transition-colors"
+                  className="min-h-11 min-w-11 rounded-md flex items-center justify-center text-muted-foreground/80 hover:text-primary hover:bg-primary/10 transition-colors"
                   title="Send photo"
                 >
-                  <Paperclip className="h-3.5 w-3.5" />
+                  <Paperclip className="h-4 w-4" aria-hidden="true" />
                 </button>
                 <button
                   type="button"
+                  aria-label="Attach video"
                   onClick={() => videoInputRef.current?.click()}
-                  className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground/70 hover:text-primary hover:bg-primary/10 transition-colors"
+                  className="min-h-11 min-w-11 rounded-md flex items-center justify-center text-muted-foreground/80 hover:text-primary hover:bg-primary/10 transition-colors"
                   title="Send video"
                 >
-                  <Video className="h-3.5 w-3.5" />
+                  <Video className="h-4 w-4" aria-hidden="true" />
                 </button>
                 <Popover open={showGifPicker} onOpenChange={setShowGifPicker}>
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="h-7 px-2 rounded-md text-[11px] font-semibold text-muted-foreground/70 hover:text-primary hover:bg-primary/10 transition-colors"
+                      aria-label="Search GIFs"
+                      className="min-h-11 min-w-11 px-2 rounded-md text-xs font-semibold text-muted-foreground/80 hover:text-primary hover:bg-primary/10 transition-colors"
                       title="Search GIFs"
                     >
                       GIF
@@ -574,12 +615,14 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
                 </Popover>
                 <button
                   type="submit"
+                  aria-label="Send message"
                   disabled={!newMessage.trim() || sending}
-                  className="ml-auto h-7 px-3 rounded-md text-xs font-semibold text-primary hover:text-primary hover:bg-primary/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+                  className="ml-auto min-h-11 px-4 rounded-md text-sm font-semibold text-primary hover:text-primary hover:bg-primary/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
                 >
-                  <Send className="h-3 w-3" />
+                  <Send className="h-4 w-4" aria-hidden="true" />
                   {sending ? 'Sending…' : 'Send'}
                 </button>
+
               </div>
             </form>
           </div>
@@ -764,13 +807,13 @@ const InboxView = ({ embedded = false }: InboxViewProps) => {
                     className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-accent"
                   >
                     <Link
-                      to={`/member/${m.user_id}`}
+                      to={clubPath(`/member/${m.user_id}`)}
                       onClick={(e) => {
                         e.preventDefault();
                         const params = new URLSearchParams(searchParams);
                         params.delete('dialog');
                         setSearchParams(params, { replace: true });
-                        navigate(`/member/${m.user_id}`);
+                        navigate(clubPath(`/member/${m.user_id}`));
                       }}
                       className="flex flex-1 min-w-0 items-center gap-3"
                     >

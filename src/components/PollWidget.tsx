@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { BarChart3, Check } from 'lucide-react';
+import { useClub } from '@/contexts/ClubContext';
+import { toast } from 'sonner';
+import { Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import StyledName from './StyledName';
 
@@ -22,23 +24,38 @@ interface PollVote {
   option_index: number;
 }
 
-const PollWidget = () => {
+interface PollWidgetProps {
+  clubId?: string | null;
+}
+
+const PollWidget = ({ clubId: clubIdProp }: PollWidgetProps = {}) => {
   const { user } = useAuth();
+  const { clubId: ctxClubId } = useClub();
+  const clubId = clubIdProp !== undefined ? clubIdProp : ctxClubId;
   const [polls, setPolls] = useState<Poll[]>([]);
   const [votes, setVotes] = useState<PollVote[]>([]);
   const [profiles, setProfiles] = useState<Record<string, string>>({});
+  const [error, setError] = useState(false);
 
+  // Reset all local state when switching clubs, so polls from a sibling
+  // club never briefly render into the new club's context.
   useEffect(() => {
-    fetchPolls();
-  }, []);
+    setPolls([]);
+    setVotes([]);
+    setProfiles({});
+    setError(false);
+    if (clubId) fetchPolls(clubId);
+  }, [clubId]);
 
-  const fetchPolls = async () => {
-    const { data: pollData } = await supabase
+  const fetchPolls = async (activeClubId: string) => {
+    const { data: pollData, error: pollErr } = await supabase
       .from('polls')
       .select('*')
       .eq('active', true)
+      .eq('club_id', activeClubId)
       .order('created_at', { ascending: false });
 
+    if (pollErr) { setError(true); return; }
     if (!pollData) return;
 
     const parsed = pollData.map((p: any) => ({
@@ -54,9 +71,10 @@ const PollWidget = () => {
         .select('poll_id, user_id, option_index')
         .in('poll_id', pollIds);
       setVotes((voteData as PollVote[]) || []);
+    } else {
+      setVotes([]);
     }
 
-    // Fetch creator profiles
     const creatorIds = [...new Set(parsed.map((p: Poll) => p.created_by))];
     if (creatorIds.length > 0) {
       const { data: profileData } = await supabase
@@ -72,35 +90,50 @@ const PollWidget = () => {
   };
 
   const toggleVote = async (pollId: string, optionIndex: number, poll: Poll) => {
-    if (!user) return;
+    if (!user || !clubId) return;
 
     const myVotes = votes.filter(v => v.poll_id === pollId && v.user_id === user.id);
     const alreadyVoted = myVotes.some(v => v.option_index === optionIndex);
 
+    let opErr: any = null;
     if (alreadyVoted) {
-      await supabase
+      const { error } = await supabase
         .from('poll_votes')
         .delete()
         .eq('poll_id', pollId)
         .eq('user_id', user.id)
         .eq('option_index', optionIndex);
+      opErr = error;
     } else {
       if (!poll.multiple_choice && myVotes.length > 0) {
-        // Remove existing vote first
         await supabase
           .from('poll_votes')
           .delete()
           .eq('poll_id', pollId)
           .eq('user_id', user.id);
       }
-      await supabase.from('poll_votes').insert({
+      const { error } = await supabase.from('poll_votes').insert({
         poll_id: pollId,
         user_id: user.id,
+        club_id: clubId,
         option_index: optionIndex,
-      });
+      } as any);
+      opErr = error;
     }
-    fetchPolls();
+    if (opErr) {
+      toast.error("Couldn't record your vote. Try again.");
+      return;
+    }
+    fetchPolls(clubId);
   };
+
+  if (error) {
+    return (
+      <div role="alert" className="flex flex-1 items-center justify-center">
+        <p className="text-sm text-muted-foreground font-body">Couldn&rsquo;t load polls.</p>
+      </div>
+    );
+  }
 
   if (polls.length === 0) {
     return (
@@ -120,7 +153,6 @@ const PollWidget = () => {
 
         return (
           <div key={poll.id} className="rounded-xl border border-border bg-card p-4 space-y-3">
-            {/* Question */}
             <div>
               <h3 className="text-base font-semibold font-serif">{poll.question}</h3>
               <p className="text-[11px] text-muted-foreground font-body mt-0.5">
@@ -130,7 +162,6 @@ const PollWidget = () => {
               </p>
             </div>
 
-            {/* Options */}
             <div className="space-y-1.5">
               {poll.options.map((option: string, idx: number) => {
                 const optVotes = pollVotes.filter(v => v.option_index === idx).length;
@@ -147,7 +178,6 @@ const PollWidget = () => {
                         : 'border-border hover:border-terracotta/40'
                     }`}
                   >
-                    {/* Progress bar background */}
                     {hasVoted && (
                       <div
                         className="absolute inset-y-0 left-0 bg-terracotta/10 transition-all duration-500"
@@ -172,7 +202,6 @@ const PollWidget = () => {
               })}
             </div>
 
-            {/* Footer */}
             <p className="text-[11px] text-muted-foreground font-body">
               {totalVoters} {totalVoters === 1 ? 'vote' : 'votes'}
             </p>
