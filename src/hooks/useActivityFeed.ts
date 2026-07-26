@@ -29,7 +29,7 @@ export interface ActivityItem {
 const LIMIT_PER_SOURCE = 30;
 const FEED_LIMIT = 50;
 
-async function fetchFeed(clubId: string): Promise<ActivityItem[]> {
+export async function fetchFeed(clubId: string): Promise<ActivityItem[]> {
   const [
     progressRes,
     quotesRes,
